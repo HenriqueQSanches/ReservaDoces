@@ -22,7 +22,7 @@ export function CarrosselProduto({ imagens, nome }: { imagens: string[]; nome: s
 
   return (
     <div>
-      <div className="overflow-hidden rounded-lg" ref={refCarrossel}>
+      <div className="overflow-hidden rounded-2xl bg-neutral-100 shadow-sm ring-1 ring-black/5" ref={refCarrossel}>
         <div className="flex">
           {imagens.map((src, i) => (
             <div key={i} className="relative aspect-square min-w-0 flex-[0_0_100%]">
@@ -48,7 +48,7 @@ export function CarrosselProduto({ imagens, nome }: { imagens: string[]; nome: s
             type="button"
             aria-label={`Ver foto ${i + 1}`}
             onClick={() => embla?.scrollTo(i)}
-            className={`size-2 rounded-full transition ${i === atual ? "bg-neutral-900" : "bg-neutral-300"}`}
+            className={`h-2 rounded-full transition-all duration-300 ${i === atual ? "w-5 bg-neutral-900" : "w-2 bg-neutral-300"}`}
           />
         ))}
       </div>

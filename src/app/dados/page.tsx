@@ -65,11 +65,26 @@ const vazio: Formulario = {
   privacidade: false,
 };
 
+// Campo com contorno preto e brilho suave quando selecionado; vermelho quando tem erro
 const classeCampo =
-  "h-12 w-full rounded-lg border border-neutral-300 bg-white px-3 text-base outline-none focus:border-neutral-900";
+  "h-12 w-full rounded-xl border border-neutral-300 bg-white px-4 text-base outline-none transition duration-150 focus:border-neutral-900 focus:ring-4 focus:ring-neutral-900/10 aria-[invalid=true]:border-red-500 aria-[invalid=true]:focus:ring-red-500/15";
 
-function Erro({ mensagem }: { mensagem?: string }) {
-  return mensagem ? <p className="mt-1 text-sm text-red-600">{mensagem}</p> : null;
+function Campo({
+  rotulo,
+  erro,
+  children,
+}: {
+  rotulo: string;
+  erro?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-sm font-medium text-neutral-700">{rotulo}</span>
+      {children}
+      {erro && <span className="mt-1.5 block animate-entrar text-sm text-red-600">{erro}</span>}
+    </label>
+  );
 }
 
 export default function Dados() {
@@ -132,92 +147,101 @@ export default function Dados() {
         </button>
       }
     >
-      <h1 className="mb-6 text-center text-2xl font-bold">Dados para reserva</h1>
+      <h1 className="mb-8 text-center text-2xl font-bold tracking-tight">Dados para reserva</h1>
 
-      <form id="form-dados" onSubmit={enviar} noValidate className="mx-auto max-w-md space-y-4">
-        <div>
+      <form id="form-dados" onSubmit={enviar} noValidate className="mx-auto max-w-md space-y-5">
+        <Campo rotulo="Nome e sobrenome" erro={errors.nome?.message}>
           <input
             {...register("nome")}
-            placeholder="Nome e sobrenome"
             autoComplete="name"
+            aria-invalid={!!errors.nome}
             className={classeCampo}
           />
-          <Erro mensagem={errors.nome?.message} />
-        </div>
+        </Campo>
 
-        <div>
+        <Campo rotulo="WhatsApp (DDD)" erro={errors.whatsapp?.message}>
           <input
             {...register("whatsapp", {
               onChange: (e) => setValue("whatsapp", mascaraWhatsapp(e.target.value)),
             })}
-            placeholder="WhatsApp (DDD)"
             inputMode="numeric"
             autoComplete="tel-national"
+            aria-invalid={!!errors.whatsapp}
             className={classeCampo}
           />
-          <Erro mensagem={errors.whatsapp?.message} />
-        </div>
+        </Campo>
 
-        <div>
+        <Campo rotulo="Como você quer receber?" erro={errors.modalidade?.message}>
           <select
             {...register("modalidade", { onChange: () => setValue("data", "") })}
+            aria-invalid={!!errors.modalidade}
             className={classeCampo}
           >
-            <option value="">Como você quer receber?</option>
+            <option value="">Selecione</option>
             <option value="retirada">Prefiro ir retirar!</option>
             <option value="entrega">Quero receber em casa!</option>
           </select>
-          <Erro mensagem={errors.modalidade?.message} />
-          {modalidade === "retirada" && (
-            <p className="mt-2 text-sm text-neutral-600">
-              Retirada na {campanha.enderecoRetirada}.
-            </p>
-          )}
-        </div>
+        </Campo>
+
+        {modalidade === "retirada" && (
+          <p className="animate-entrar rounded-xl bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
+            Retirada na {campanha.enderecoRetirada}.
+          </p>
+        )}
 
         {modalidade === "entrega" && (
-          <fieldset className="space-y-4">
-            <div>
+          <fieldset className="animate-entrar space-y-5">
+            <Campo rotulo="CEP" erro={errors.cep?.message}>
               <input
                 {...register("cep", { onChange: (e) => setValue("cep", mascaraCep(e.target.value)) })}
-                placeholder="CEP"
                 inputMode="numeric"
                 autoComplete="postal-code"
+                aria-invalid={!!errors.cep}
                 className={classeCampo}
               />
-              <Erro mensagem={errors.cep?.message} />
-            </div>
-            <div>
-              <input {...register("rua")} placeholder="Rua" autoComplete="address-line1" className={classeCampo} />
-              <Erro mensagem={errors.rua?.message} />
-            </div>
+            </Campo>
+            <Campo rotulo="Rua" erro={errors.rua?.message}>
+              <input
+                {...register("rua")}
+                autoComplete="address-line1"
+                aria-invalid={!!errors.rua}
+                className={classeCampo}
+              />
+            </Campo>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <input {...register("numero")} placeholder="Número" inputMode="numeric" className={classeCampo} />
-                <Erro mensagem={errors.numero?.message} />
-              </div>
-              <input {...register("complemento")} placeholder="Complemento" className={classeCampo} />
+              <Campo rotulo="Número" erro={errors.numero?.message}>
+                <input
+                  {...register("numero")}
+                  inputMode="numeric"
+                  aria-invalid={!!errors.numero}
+                  className={classeCampo}
+                />
+              </Campo>
+              <Campo rotulo="Complemento">
+                <input {...register("complemento")} className={classeCampo} />
+              </Campo>
             </div>
-            <div>
-              <input {...register("bairro")} placeholder="Bairro" className={classeCampo} />
-              <Erro mensagem={errors.bairro?.message} />
-            </div>
+            <Campo rotulo="Bairro" erro={errors.bairro?.message}>
+              <input {...register("bairro")} aria-invalid={!!errors.bairro} className={classeCampo} />
+            </Campo>
           </fieldset>
         )}
 
         {modalidade && (
-          <div>
-            <select {...register("data")} className={classeCampo}>
-              <option value="">
-                {modalidade === "retirada" ? "Data da retirada" : "Data da entrega"}
-              </option>
-              {datas.map((d) => (
-                <option key={d} value={d}>
-                  {dataCurta(d)}
-                </option>
-              ))}
-            </select>
-            <Erro mensagem={errors.data?.message} />
+          <div className="animate-entrar">
+            <Campo
+              rotulo={modalidade === "retirada" ? "Data da retirada" : "Data da entrega"}
+              erro={errors.data?.message}
+            >
+              <select {...register("data")} aria-invalid={!!errors.data} className={classeCampo}>
+                <option value="">Selecione</option>
+                {datas.map((d) => (
+                  <option key={d} value={d}>
+                    {dataCurta(d)}
+                  </option>
+                ))}
+              </select>
+            </Campo>
             <a
               href={linkWhatsapp(
                 campanha.whatsapp,
@@ -225,7 +249,7 @@ export default function Dados() {
               )}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 inline-block text-sm text-neutral-600 underline"
+              className="mt-2 inline-block text-sm text-neutral-600 underline underline-offset-4"
             >
               Nenhuma data serve? Fale com a gente
             </a>
@@ -233,14 +257,20 @@ export default function Dados() {
         )}
 
         <div>
-          <label className="flex items-start gap-3 text-sm text-neutral-600">
-            <input type="checkbox" {...register("privacidade")} className="mt-0.5 size-5 accent-neutral-900" />
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl p-1 text-sm text-neutral-600">
+            <input
+              type="checkbox"
+              {...register("privacidade")}
+              className="mt-0.5 size-5 shrink-0 accent-neutral-900"
+            />
             <span>
               Concordo que meus dados sejam usados apenas para esta reserva e para o contato sobre o
               pedido.
             </span>
           </label>
-          <Erro mensagem={errors.privacidade?.message} />
+          {errors.privacidade && (
+            <p className="mt-1.5 animate-entrar text-sm text-red-600">{errors.privacidade.message}</p>
+          )}
         </div>
       </form>
     </Tela>

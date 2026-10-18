@@ -38,14 +38,21 @@ export default function Resumo() {
       logo="monograma"
       rodape={
         <button type="button" onClick={pagar} disabled={enviando} className={classeBotaoAcao}>
-          {enviando ? "Abrindo pagamento..." : `Pagar sinal de ${moeda(campanha.sinalCentavos)}`}
+          {enviando ? (
+            <>
+              <span className="mr-2 size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              Abrindo pagamento...
+            </>
+          ) : (
+            `Pagar sinal de ${moeda(campanha.sinalCentavos)}`
+          )}
         </button>
       }
     >
-      <h1 className="mb-6 text-2xl font-bold">Sua reserva:</h1>
+      <h1 className="mb-8 text-2xl font-bold tracking-tight">Sua reserva:</h1>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <section className="space-y-1 text-sm">
+      <div className="grid gap-4 md:grid-cols-2">
+        <section className="space-y-1 rounded-2xl bg-neutral-50 p-4 text-sm">
           <p className="font-semibold">{dados.nome}</p>
           <p className="text-neutral-600">{dados.whatsapp}</p>
           <p className="pt-2 font-semibold">
@@ -56,16 +63,16 @@ export default function Resumo() {
               ? campanha.enderecoRetirada
               : `${dados.rua}, ${dados.numero}${dados.complemento ? `, ${dados.complemento}` : ""}, ${dados.bairro}${dados.cidade ? `, ${dados.cidade}` : ""}`}
           </p>
-          <Link href="/dados" className="inline-block pt-1 text-neutral-600 underline">
+          <Link href="/dados" className="inline-block pt-2 font-medium text-neutral-900 underline underline-offset-4">
             Alterar dados
           </Link>
         </section>
 
-        <section>
+        <section className="rounded-2xl border border-neutral-200 p-4">
           <ul className="space-y-3">
             {escolhidos.map((p) => (
               <li key={p.id} className="flex items-center gap-3">
-                <div className="relative size-16 shrink-0 overflow-hidden rounded-lg">
+                <div className="relative size-16 shrink-0 overflow-hidden rounded-xl ring-1 ring-black/5">
                   <Image
                     src={p.imagens[0]}
                     alt={p.nome}
@@ -90,7 +97,7 @@ export default function Resumo() {
         </section>
       </div>
 
-      <section className="mt-8 rounded-lg border-2 border-neutral-900 p-4">
+      <section className="mt-6 rounded-2xl border-2 border-neutral-900 p-5 shadow-sm">
         <div className="flex items-center justify-between">
           <span className="font-semibold">Valor do sinal a ser pago</span>
           <span className="text-2xl font-black">{moeda(campanha.sinalCentavos)}</span>
@@ -101,7 +108,7 @@ export default function Resumo() {
         </div>
       </section>
 
-      <section className="mt-6 space-y-2 text-sm text-neutral-600">
+      <section className="mt-6 space-y-2 px-1 text-sm text-neutral-600">
         <h2 className="font-semibold text-neutral-900">Formas de pagamento</h2>
         <p>Pix, cartão de crédito ou débito, na página segura do Mercado Pago.</p>
         <p>

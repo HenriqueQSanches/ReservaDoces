@@ -4,8 +4,56 @@
   --font-sans: var(--font-geist-sans);
   --color-acao: #16a34a;
   --color-acao-escuro: #15803d;
+
+  --animate-entrar: entrar 350ms ease-out both;
+  --animate-subir: subir 300ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  --animate-pulo: pulo 300ms ease-out;
+  --animate-check: check 450ms cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+
+  @keyframes entrar {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+  @keyframes subir {
+    from {
+      transform: translateY(100%);
+    }
+  }
+  @keyframes pulo {
+    40% {
+      transform: scale(1.35);
+    }
+  }
+  @keyframes check {
+    from {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+  }
 }
 
 body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Sem atraso de toque duplo no celular */
+a,
+button,
+input,
+select,
+label {
+  touch-action: manipulation;
+}
+
+/* Quem pede menos movimento no celular vê tudo sem animação */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
