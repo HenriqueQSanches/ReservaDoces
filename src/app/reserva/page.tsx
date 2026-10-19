@@ -16,7 +16,7 @@ export default function Resumo() {
 
   useEffect(() => {
     if (!carregado) return;
-    if (totalUnidades === 0) router.replace("/");
+    if (campanha.esgotado || totalUnidades === 0) router.replace("/");
     else if (!dados) router.replace("/dados");
   }, [carregado, totalUnidades, dados, router]);
 

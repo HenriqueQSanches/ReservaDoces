@@ -103,9 +103,9 @@ export default function Dados() {
     defaultValues: vazio,
   });
 
-  // Sem produto escolhido não tem o que reservar: volta para a vitrine.
+  // Sem produto escolhido, ou campanha esgotada, não tem o que reservar: volta para a vitrine.
   useEffect(() => {
-    if (carregado && totalUnidades === 0) router.replace("/");
+    if (campanha.esgotado || (carregado && totalUnidades === 0)) router.replace("/");
   }, [carregado, totalUnidades, router]);
 
   // Quem volta da tela 3 encontra o formulário preenchido.
