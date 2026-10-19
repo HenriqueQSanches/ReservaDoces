@@ -19,11 +19,30 @@ function vibrar() {
 export function Vitrine({ esgotado }: { esgotado: boolean }) {
   const { itens, adicionar, remover, totalUnidades, totalCentavos } = useReserva();
 
+  // Esgotado: só o aviso, sem produtos
+  if (esgotado) {
+    return (
+      <Tela logo="lettering">
+        <section className="mx-auto max-w-md rounded-2xl border-2 border-neutral-900 p-6 text-center">
+          <h1 className="text-2xl font-bold tracking-tight">Reservas esgotadas</h1>
+          <p className="mt-2 text-neutral-600">Todas as vagas desta campanha foram preenchidas.</p>
+          <a
+            href={linkWhatsapp(campanha.whatsapp, "Olá! Vi que as reservas de Natal esgotaram.")}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${classeBotaoEscuro} mt-5 w-full`}
+          >
+            Fale com a gente
+          </a>
+        </section>
+      </Tela>
+    );
+  }
+
   return (
     <Tela
       logo="lettering"
       rodape={
-        !esgotado &&
         totalUnidades > 0 && (
           <Link href="/dados" className={classeBotaoAcao}>
             Pronto
@@ -37,21 +56,6 @@ export function Vitrine({ esgotado }: { esgotado: boolean }) {
       <p className="mb-10 text-center text-sm text-neutral-500">
         Entregas e retiradas em {todasAsDatas.map(dataCurta).join(", ")}
       </p>
-
-      {esgotado && (
-        <section className="mb-12 rounded-2xl border-2 border-neutral-900 p-6 text-center">
-          <h1 className="text-2xl font-bold tracking-tight">Reservas esgotadas</h1>
-          <p className="mt-2 text-neutral-600">Todas as vagas desta campanha foram preenchidas.</p>
-          <a
-            href={linkWhatsapp(campanha.whatsapp, "Olá! Vi que as reservas de Natal esgotaram.")}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`${classeBotaoEscuro} mt-5 w-full`}
-          >
-            Fale com a gente
-          </a>
-        </section>
-      )}
 
       <ul className="grid gap-14 md:grid-cols-3 md:gap-8">
         {produtos.map((produto) => {
@@ -68,7 +72,6 @@ export function Vitrine({ esgotado }: { esgotado: boolean }) {
                 <p className="shrink-0 text-lg font-bold">{moeda(produto.precoCentavos)}</p>
               </div>
 
-              {!esgotado && (
               <div className="mt-4 flex items-center gap-3">
                 {qtd > 0 && (
                   <button
@@ -103,7 +106,6 @@ export function Vitrine({ esgotado }: { esgotado: boolean }) {
                   )}
                 </button>
               </div>
-              )}
             </li>
           );
         })}
