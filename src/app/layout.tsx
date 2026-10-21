@@ -9,7 +9,7 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Reservas de Natal",
+  title: "Reservas de Natal | Nathalia Perissato Brigaderia",
   description: "Garanta a sua reserva de Natal.",
 };
 

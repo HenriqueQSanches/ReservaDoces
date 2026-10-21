@@ -1,12 +1,31 @@
-// Espaço reservado até chegarem os SVGs do Luiz (lettering nas telas 1 e 4, monograma nas telas 2 e 3).
+import Image from "next/image";
+
+// Logos enviadas pelo Luiz em 20/10/2026 (JPG convertido para PNG com fundo transparente).
+// Lettering nas telas 1 e 4, monograma nas telas 2 e 3.
 export function Logo({ variante }: { variante: "lettering" | "monograma" }) {
-  const tamanho = variante === "monograma" ? "size-12" : "h-10 w-40";
+  if (variante === "monograma") {
+    return (
+      <Image
+        src="/marca/monograma.png"
+        alt="Nathalia Perissato Brigaderia"
+        width={1600}
+        height={1600}
+        priority
+        sizes="64px"
+        className="mx-auto size-16"
+      />
+    );
+  }
+
   return (
-    <div
-      aria-hidden
-      className={`mx-auto flex ${tamanho} items-center justify-center rounded border border-dashed border-neutral-300 text-[10px] uppercase tracking-wide text-neutral-400`}
-    >
-      logo
-    </div>
+    <Image
+      src="/marca/lettering.png"
+      alt="Nathalia Perissato Brigaderia"
+      width={1600}
+      height={514}
+      priority
+      sizes="(min-width: 768px) 320px, 256px"
+      className="mx-auto h-auto w-64 md:w-80"
+    />
   );
 }
