@@ -8,9 +8,21 @@ const geist = Geist({
   subsets: ["latin"],
 });
 
+const titulo = "Reservas de Natal | Nathalia Perissato Brigaderia";
+const descricao = "Garanta a sua reserva de Natal.";
+
 export const metadata: Metadata = {
-  title: "Reservas de Natal | Nathalia Perissato Brigaderia",
-  description: "Garanta a sua reserva de Natal.",
+  // A Netlify define URL no build com o endereço do site; a imagem de compartilhamento precisa dele completo
+  metadataBase: new URL(process.env.URL ?? "http://localhost:3000"),
+  title: titulo,
+  description: descricao,
+  openGraph: {
+    title: titulo,
+    description: descricao,
+    siteName: "Nathalia Perissato Brigaderia",
+    locale: "pt_BR",
+    type: "website",
+  },
 };
 
 export const viewport: Viewport = {
