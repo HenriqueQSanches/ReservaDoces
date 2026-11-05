@@ -8,15 +8,17 @@ import { campanha, produtos } from "@/config/campanha";
 import { Tela, classeBotaoAcao } from "@/components/Tela";
 import { useReserva } from "@/lib/reserva";
 import { dataCurta, moeda } from "@/lib/formatar";
+import type { RespostaCriarPedido } from "@/app/api/pedidos/route";
 
 export default function Resumo() {
   const router = useRouter();
   const { carregado, itens, dados, totalUnidades, totalCentavos, restanteCentavos } = useReserva();
   const [enviando, setEnviando] = useState(false);
+  const [aviso, setAviso] = useState<{ texto: string; link?: string } | null>(null);
 
   useEffect(() => {
     if (!carregado) return;
-    if (campanha.esgotado || totalUnidades === 0) router.replace("/");
+    if (totalUnidades === 0) router.replace("/");
     else if (!dados) router.replace("/dados");
   }, [carregado, totalUnidades, dados, router]);
 
@@ -25,12 +27,42 @@ export default function Resumo() {
   const escolhidos = produtos.filter((p) => itens[p.id]);
   const retirada = dados.modalidade === "retirada";
 
-  // Simulação até integrar o Mercado Pago: aqui o backend vai criar o pedido,
-  // segurar a vaga por 15 minutos e mandar a cliente para o Checkout Pro.
-  function pagar() {
+  // Cria o pedido no banco (segura a vaga por 15 minutos).
+  // Provisório até o Mercado Pago: no desenvolvimento, o pagamento é simulado logo em seguida.
+  async function pagar() {
     setEnviando(true);
-    const id = `NAT-${String(Math.floor(Math.random() * 10000)).padStart(4, "0")}`;
-    router.push(`/pedido/${id}`);
+    setAviso(null);
+    try {
+      const r = await fetch("/api/pedidos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itens, dados }),
+      });
+      const resposta: RespostaCriarPedido = await r.json();
+
+      if (!resposta.ok) {
+        setAviso(
+          resposta.motivo === "esgotado"
+            ? { texto: "As reservas acabaram enquanto você preenchia.", link: "/" }
+            : resposta.motivo === "poucas_unidades"
+              ? {
+                  texto: `Restam só ${resposta.produtos_restantes} unidades. Ajuste a quantidade para continuar.`,
+                  link: "/",
+                }
+              : { texto: "Não conseguimos registrar sua reserva. Tente de novo em instantes." },
+        );
+        setEnviando(false);
+        return;
+      }
+
+      if (process.env.NODE_ENV !== "production") {
+        await fetch(`/api/pedidos/${resposta.numero}/simular-pagamento`, { method: "POST" });
+      }
+      router.push(`/pedido/${resposta.numero}`);
+    } catch {
+      setAviso({ texto: "Não conseguimos registrar sua reserva. Confira sua internet e tente de novo." });
+      setEnviando(false);
+    }
   }
 
   return (
@@ -50,6 +82,17 @@ export default function Resumo() {
       }
     >
       <h1 className="mb-8 text-2xl font-bold tracking-tight">Sua reserva:</h1>
+
+      {aviso && (
+        <div role="alert" className="mb-6 animate-entrar rounded-2xl border-2 border-red-500 p-4 text-sm">
+          <p className="font-medium text-red-700">{aviso.texto}</p>
+          {aviso.link && (
+            <Link href={aviso.link} className="mt-2 inline-block font-medium underline underline-offset-4">
+              Voltar para os produtos
+            </Link>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <section className="space-y-1 rounded-2xl bg-neutral-50 p-4 text-sm">

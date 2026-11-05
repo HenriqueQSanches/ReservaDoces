@@ -5,6 +5,7 @@ import { campanha, produtos } from "@/config/campanha";
 import { CarrosselProduto } from "@/components/CarrosselProduto";
 import { Tela, classeBotaoAcao, classeBotaoEscuro, classeToque } from "@/components/Tela";
 import { useReserva } from "@/lib/reserva";
+import { useDisponibilidade } from "@/lib/disponibilidade";
 import { dataCurta, linkWhatsapp, moeda } from "@/lib/formatar";
 
 const todasAsDatas = [...new Set([...campanha.datas.entrega, ...campanha.datas.retirada])].sort();
@@ -16,8 +17,13 @@ function vibrar() {
   } catch {}
 }
 
-export function Vitrine({ esgotado }: { esgotado: boolean }) {
+export function Vitrine({ esgotadoForcado = false }: { esgotadoForcado?: boolean }) {
   const { itens, adicionar, remover, totalUnidades, totalCentavos } = useReserva();
+  const disponibilidade = useDisponibilidade();
+  const esgotado = esgotadoForcado || disponibilidade?.esgotado === true;
+  // Não deixa escolher mais unidades do que ainda existem
+  const semMaisUnidades =
+    disponibilidade !== null && totalUnidades >= disponibilidade.produtos_restantes;
 
   // Esgotado: só o aviso, sem produtos
   if (esgotado) {
@@ -92,7 +98,8 @@ export function Vitrine({ esgotado }: { esgotado: boolean }) {
                     vibrar();
                     adicionar(produto.id);
                   }}
-                  className={`${classeBotaoEscuro} relative flex-1`}
+                  disabled={semMaisUnidades}
+                  className={`${classeBotaoEscuro} relative flex-1 disabled:bg-neutral-300 disabled:active:scale-100`}
                 >
                   Reservar
                   {qtd > 0 && (

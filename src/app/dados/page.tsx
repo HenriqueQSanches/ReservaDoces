@@ -8,6 +8,7 @@ import { z } from "zod";
 import { campanha, type Modalidade } from "@/config/campanha";
 import { Tela, classeBotaoAcao } from "@/components/Tela";
 import { useReserva } from "@/lib/reserva";
+import { esquemaDados } from "@/lib/esquema";
 import {
   dataCurta,
   linkWhatsapp,
@@ -16,38 +17,11 @@ import {
   somenteDigitos,
 } from "@/lib/formatar";
 
-const esquema = z
-  .object({
-    nome: z
-      .string()
-      .trim()
-      .refine((v) => v.split(/\s+/).filter(Boolean).length >= 2, "Informe nome e sobrenome"),
-    whatsapp: z
-      .string()
-      .refine((v) => somenteDigitos(v).length === 11, "Informe o WhatsApp com DDD"),
-    modalidade: z
-      .string()
-      .refine((v) => v === "retirada" || v === "entrega", "Escolha retirar ou receber em casa"),
-    data: z.string().min(1, "Escolha uma data"),
-    cep: z.string(),
-    rua: z.string(),
-    numero: z.string(),
-    complemento: z.string(),
-    bairro: z.string(),
-    cidade: z.string(),
+const esquema = esquemaDados.and(
+  z.object({
     privacidade: z.boolean().refine((v) => v, "Precisamos do seu aceite para continuar"),
-  })
-  .superRefine((d, ctx) => {
-    if (d.modalidade !== "entrega") return;
-    const exigir = (campo: "rua" | "numero" | "bairro", mensagem: string) => {
-      if (!d[campo].trim()) ctx.addIssue({ code: "custom", path: [campo], message: mensagem });
-    };
-    if (somenteDigitos(d.cep).length !== 8)
-      ctx.addIssue({ code: "custom", path: ["cep"], message: "Informe o CEP" });
-    exigir("rua", "Informe a rua");
-    exigir("numero", "Informe o número");
-    exigir("bairro", "Informe o bairro");
-  });
+  }),
+);
 
 type Formulario = z.input<typeof esquema>;
 
@@ -103,9 +77,9 @@ export default function Dados() {
     defaultValues: vazio,
   });
 
-  // Sem produto escolhido, ou campanha esgotada, não tem o que reservar: volta para a vitrine.
+  // Sem produto escolhido não tem o que reservar: volta para a vitrine.
   useEffect(() => {
-    if (campanha.esgotado || (carregado && totalUnidades === 0)) router.replace("/");
+    if (carregado && totalUnidades === 0) router.replace("/");
   }, [carregado, totalUnidades, router]);
 
   // Quem volta da tela 3 encontra o formulário preenchido.

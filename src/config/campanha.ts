@@ -11,8 +11,11 @@ export type Produto = {
 export type Modalidade = "retirada" | "entrega";
 
 export const campanha = {
-  // Provisório: quando o banco entrar, "esgotado" passa a vir da contagem de vagas (50 reservas ou 60 produtos)
-  esgotado: false,
+  // Limites da campanha: encerra no que acabar primeiro. A contagem fica no banco.
+  limiteReservas: 50,
+  limiteProdutos: 60,
+  // Tempo que a vaga fica segura enquanto a cliente paga
+  validadeMinutos: 15,
   sinalCentavos: 5000,
   whatsapp: "5511999999999",
   enderecoRetirada:

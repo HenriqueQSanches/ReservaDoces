@@ -1,22 +1,56 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { campanha } from "@/config/campanha";
 import { useReserva } from "@/lib/reserva";
 import { linkWhatsapp } from "@/lib/formatar";
 import { classeBotaoAcao, classeBotaoEscuro } from "@/components/Tela";
+import type { StatusPedido } from "@/app/api/pedidos/[numero]/route";
 
 type Resultado = "aprovado" | "aguardando" | "recusado";
 
-// O Mercado Pago devolve a cliente com ?status=approved|pending|in_process|rejected.
-// Provisório: sem banco, a tela confia nesse parâmetro. Quando o banco entrar, o status
-// passa a vir do pedido confirmado pelo webhook, e o parâmetro da URL deixa de valer.
-function lerResultado(status: string | null): Resultado {
-  if (status === null || status === "approved") return "aprovado";
-  if (status === "pending" || status === "in_process") return "aguardando";
-  return "recusado";
+// Quem decide é o banco: só o pedido confirmado vira "aprovado", e o endereço não muda isso.
+// O ?status= que o Mercado Pago coloca na volta só serve para mostrar a recusa mais cedo.
+function lerResultado(statusBanco: StatusPedido, statusUrl: string | null): Resultado {
+  if (statusBanco === "pago" || statusBanco === "entregue") return "aprovado";
+  if (statusUrl === "rejected" || statusUrl === "null") return "recusado";
+  if (statusBanco === "expirado" || statusBanco === "cancelado") return "recusado";
+  return "aguardando";
+}
+
+// Lê o status do pedido e repete a cada 3 segundos enquanto o pagamento não se resolve.
+function useStatusPedido(numero: string) {
+  const [status, setStatus] = useState<StatusPedido | "nao_encontrado" | null>(null);
+
+  useEffect(() => {
+    let ativo = true;
+    let tentativas = 0;
+    let espera: ReturnType<typeof setTimeout>;
+
+    async function consultar() {
+      try {
+        const r = await fetch(`/api/pedidos/${numero}`, { cache: "no-store" });
+        if (!ativo) return;
+        if (r.status === 404) return setStatus("nao_encontrado");
+        if (r.ok) {
+          const { status: atual } = (await r.json()) as { status: StatusPedido };
+          setStatus(atual);
+          if (atual !== "pendente" && atual !== "estornar") return;
+        }
+      } catch {}
+      if (ativo && ++tentativas < 40) espera = setTimeout(consultar, 3000);
+    }
+
+    consultar();
+    return () => {
+      ativo = false;
+      clearTimeout(espera);
+    };
+  }, [numero]);
+
+  return status;
 }
 
 function IconeWhatsapp() {
@@ -51,13 +85,36 @@ const icones: Record<Resultado, React.ReactNode> = {
 
 export function Concluido() {
   const { id } = useParams<{ id: string }>();
-  const resultado = lerResultado(useSearchParams().get("status"));
+  const statusUrl = useSearchParams().get("status");
+  const statusBanco = useStatusPedido(id);
+  const resultado =
+    statusBanco === null || statusBanco === "nao_encontrado" ? null : lerResultado(statusBanco, statusUrl);
   const { carregado, limpar } = useReserva();
 
   // Só limpa a reserva quando o pagamento foi aprovado; nos outros casos a cliente pode tentar de novo.
   useEffect(() => {
     if (carregado && resultado === "aprovado") limpar();
   }, [carregado, resultado, limpar]);
+
+  if (statusBanco === "nao_encontrado") {
+    return (
+      <div className="mx-auto flex max-w-md flex-col items-center pt-6 text-center">
+        <h1 className="text-2xl font-bold tracking-tight">Pedido não encontrado</h1>
+        <p className="mt-2 text-neutral-600">Confira o número do pedido ou fale com a gente.</p>
+        <Link href="/" className={`${classeBotaoEscuro} mt-8 w-full`}>
+          Voltar para o início
+        </Link>
+      </div>
+    );
+  }
+
+  if (resultado === null) {
+    return (
+      <div className="flex justify-center pt-16" aria-label="Carregando">
+        <span className="size-8 animate-spin rounded-full border-[3px] border-neutral-200 border-t-neutral-900" />
+      </div>
+    );
+  }
 
   const whatsapp = linkWhatsapp(
     campanha.whatsapp,
