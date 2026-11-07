@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Cloudflare (build do adaptador e cache local do wrangler)
+.open-next
+.wrangler
+
+# O .env.production não tem segredo (só o endereço público) e vai para o git
+!.env.production

@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Publicação na Cloudflare Workers com o adaptador @opennextjs/cloudflare.
+  // Segredos (Supabase e Mercado Pago) entram com `wrangler secret put`, nunca aqui.
+  "name": "reservas-natal",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      // Referência do worker a ele mesmo, exigida pelo adaptador
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "reservas-natal"
+    }
+  ],
+  "images": {
+    // Otimização das imagens do next/image
+    "binding": "IMAGES"
+  },
+  "vars": {
+    // Endereço público do site (prévia do link e retorno do Mercado Pago). Ajustar quando tiver domínio próprio.
+    "URL": "https://reservas-natal.henrique-sanches-oficial.workers.dev"
+  }
+}
