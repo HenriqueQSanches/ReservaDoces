@@ -51,7 +51,8 @@ export async function criarCobranca({ numero, nome, sinalCentavos, expiraEm }: C
       back_urls: { success: volta, pending: volta, failure: volta },
       // O retorno automático só é aceito com endereço https
       ...(seguro ? { auto_return: "approved" } : {}),
-      notification_url: seguro ? `${site}/api/mercadopago/webhook` : undefined,
+      // Sem notification_url: o aviso vem pelo webhook configurado no painel do Mercado Pago (com assinatura).
+      // Com o campo, o MP também mandava avisos no formato antigo (IPN), sem assinatura, que o site recusa.
       payment_methods: {
         excluded_payment_types: [{ id: "ticket" }],
         installments: 1,
