@@ -1,4 +1,3 @@
-import { campanha } from "@/config/campanha";
 import { bancoDeDados } from "@/lib/supabase";
 import { assinaturaValida, consultarPagamento, pagamentoConfigurado, pagamentoVale } from "@/lib/mercadopago";
 
@@ -31,8 +30,6 @@ export async function POST(request: Request) {
     const { error } = await bancoDeDados().rpc("confirmar_pagamento", {
       p_numero: pagamento.numero,
       p_pagamento_id: pagamento.id,
-      p_limite_reservas: campanha.limiteReservas,
-      p_limite_produtos: campanha.limiteProdutos,
     });
     if (error) throw error;
     return new Response(null, { status: 200 });

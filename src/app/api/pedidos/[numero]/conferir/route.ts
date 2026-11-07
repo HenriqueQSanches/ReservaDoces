@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { campanha } from "@/config/campanha";
 import { bancoDeDados } from "@/lib/supabase";
 import { consultarPagamento, pagamentoConfigurado, pagamentoVale } from "@/lib/mercadopago";
 
@@ -22,8 +21,6 @@ export async function POST(request: Request, ctx: RouteContext<"/api/pedidos/[nu
     const { data, error } = await bancoDeDados().rpc("confirmar_pagamento", {
       p_numero: numero,
       p_pagamento_id: pagamento.id,
-      p_limite_reservas: campanha.limiteReservas,
-      p_limite_produtos: campanha.limiteProdutos,
     });
     if (error) throw error;
     return Response.json({ status_mp: pagamento.status, confirmado: data.ok === true, status: data.status });

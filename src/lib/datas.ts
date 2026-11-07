@@ -13,6 +13,12 @@ function diasAntes(iso: string, dias: number) {
   return d.toISOString().slice(0, 10);
 }
 
+// Momento em que a data fecha sozinha: X dias antes, ao meio-dia de São Paulo (sem horário de verão desde 2019)
+export function fechamentoAutomatico(data: string) {
+  const hora = String(campanha.horaFechamento).padStart(2, "0");
+  return new Date(`${diasAntes(data, campanha.antecedenciaDias)}T${hora}:00:00-03:00`);
+}
+
 export type SituacaoData = {
   data: string;
   modalidades: Modalidade[];
@@ -37,7 +43,7 @@ export async function situacaoDasDatas(): Promise<SituacaoData[]> {
   return todas.map((data) => {
     const modalidades = (["entrega", "retirada"] as const).filter((m) => campanha.datas[m].includes(data));
     const passou = data < hoje;
-    const automatica = hoje < diasAntes(data, campanha.antecedenciaDias);
+    const automatica = Date.now() < fechamentoAutomatico(data).getTime();
     const manual = escolhas.has(data) ? escolhas.get(data)! : null;
     return { data, modalidades, automatica, manual, passou, aberta: !passou && (manual ?? automatica) };
   });

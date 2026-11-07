@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { campanha, produtos } from "@/config/campanha";
+import { campanha, grupos, produtos } from "@/config/campanha";
 import { Tela, classeBotaoAcao } from "@/components/Tela";
 import { useReserva } from "@/lib/reserva";
 import { dataCurta, moeda } from "@/lib/formatar";
@@ -47,16 +47,18 @@ export default function Resumo() {
 
         if (!resposta.ok) {
           setAviso(
-            resposta.motivo === "esgotado"
-              ? { texto: "As reservas acabaram enquanto você preenchia.", link: "/" }
-              : resposta.motivo === "poucas_unidades"
-                ? {
-                    texto: `Restam só ${resposta.produtos_restantes} unidades. Ajuste a quantidade para continuar.`,
-                    link: "/",
-                  }
-                : resposta.motivo === "data_fechada"
-                  ? { texto: "A data escolhida não está mais disponível. Escolha outra data.", link: "/dados", rotulo: "Escolher outra data" }
-                  : { texto: "Não conseguimos registrar sua reserva. Tente de novo em instantes." },
+            resposta.motivo === "sem_vaga"
+              ? {
+                  texto:
+                    resposta.restante > 0
+                      ? `Nessa data só cabem mais ${resposta.restante} ${grupos[resposta.grupo].plural}. Escolha outra data ou ajuste a quantidade.`
+                      : `Não há mais ${grupos[resposta.grupo].plural} disponíveis nessa data. Escolha outra data.`,
+                  link: "/dados",
+                  rotulo: "Escolher outra data",
+                }
+              : resposta.motivo === "data_fechada"
+                ? { texto: "A data escolhida não está mais disponível. Escolha outra data.", link: "/dados", rotulo: "Escolher outra data" }
+                : { texto: "Não conseguimos registrar sua reserva. Tente de novo em instantes." },
           );
           setEnviando(false);
           return;

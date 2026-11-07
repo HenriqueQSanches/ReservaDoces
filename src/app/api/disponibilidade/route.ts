@@ -1,25 +1,21 @@
 import { connection } from "next/server";
-import { campanha } from "@/config/campanha";
-import { bancoDeDados } from "@/lib/supabase";
+import type { Grupo } from "@/config/campanha";
+import { maximoPorGrupo, vagasPorData } from "@/lib/vagas";
 
 export type Disponibilidade = {
-  reservas_restantes: number;
-  produtos_restantes: number;
+  // maior quantidade de cada produto que ainda cabe em alguma data aberta
+  maximo: Record<Grupo, number>;
   esgotado: boolean;
 };
 
 export async function GET() {
   await connection();
-
-  const { data, error } = await bancoDeDados().rpc("disponibilidade", {
-    p_limite_reservas: campanha.limiteReservas,
-    p_limite_produtos: campanha.limiteProdutos,
-  });
-
-  if (error) {
-    console.error("disponibilidade", error);
+  try {
+    const maximo = maximoPorGrupo(await vagasPorData());
+    const resposta: Disponibilidade = { maximo, esgotado: Object.values(maximo).every((n) => n === 0) };
+    return Response.json(resposta, { headers: { "Cache-Control": "no-store" } });
+  } catch (e) {
+    console.error("disponibilidade", e);
     return Response.json({ erro: "indisponivel" }, { status: 500 });
   }
-
-  return Response.json(data as Disponibilidade, { headers: { "Cache-Control": "no-store" } });
 }

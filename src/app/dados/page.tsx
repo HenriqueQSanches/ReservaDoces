@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { campanha, type Modalidade } from "@/config/campanha";
-import { Tela, classeBotaoAcao } from "@/components/Tela";
+import { campanha, grupos, produtos, type Grupo, type Modalidade } from "@/config/campanha";
+import { Tela, classeBotaoAcao, classeBotaoEscuro } from "@/components/Tela";
 import { useReserva } from "@/lib/reserva";
 import { esquemaDados } from "@/lib/esquema";
 import { useDatasAbertas } from "@/lib/datasAbertas";
@@ -65,7 +65,7 @@ function Campo({
 
 export default function Dados() {
   const router = useRouter();
-  const { carregado, totalUnidades, dados, salvarDados } = useReserva();
+  const { carregado, itens, totalUnidades, dados, salvarDados } = useReserva();
 
   const {
     register,
@@ -93,6 +93,14 @@ export default function Dados() {
   const cep = useWatch({ control, name: "cep" });
   const abertas = useDatasAbertas();
   const datas = modalidade && abertas ? abertas[modalidade] : [];
+
+  // Quanto do carrinho é de cada produto (somando os sabores), para saber quais datas comportam o pedido
+  const noCarrinho = (Object.keys(grupos) as Grupo[]).map((g) => ({
+    grupo: g,
+    qtd: produtos.filter((p) => p.grupo === g).reduce((s, p) => s + (itens[p.id] ?? 0), 0),
+  }));
+  const cabe = (restantes: Record<Grupo, number>) => noCarrinho.every(({ grupo, qtd }) => qtd <= restantes[grupo]);
+  const nenhumaCabe = !!abertas && !!modalidade && datas.every((d) => !cabe(d.restantes));
 
   useEffect(() => {
     const digitos = somenteDigitos(cep);
@@ -217,15 +225,38 @@ export default function Dados() {
             >
               <select {...register("data")} aria-invalid={!!errors.data} className={classeCampo}>
                 <option value="">
-                  {!abertas ? "Carregando datas..." : datas.length === 0 ? "Nenhuma data disponível" : "Selecione"}
+                  {!abertas ? "Carregando datas..." : nenhumaCabe ? "Nenhuma data disponível" : "Selecione"}
                 </option>
                 {datas.map((d) => (
-                  <option key={d} value={d}>
-                    {dataCurta(d)}
+                  <option key={d.data} value={d.data} disabled={!cabe(d.restantes)}>
+                    {dataCurta(d.data)}
+                    {cabe(d.restantes) ? "" : " (indisponível)"}
                   </option>
                 ))}
               </select>
             </Campo>
+            {nenhumaCabe && (
+              <div className="mt-3 animate-entrar rounded-xl bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+                <p>
+                  Não temos data de {modalidade === "retirada" ? "retirada" : "entrega"} para essa quantidade.
+                  Fale com a gente pelo WhatsApp que a gente tenta resolver, ou volte e ajuste a quantidade.
+                </p>
+                <a
+                  href={linkWhatsapp(
+                    campanha.whatsapp,
+                    `Olá! Quero reservar ${noCarrinho
+                      .filter((c) => c.qtd > 0)
+                      .map((c) => `${c.qtd} ${c.qtd === 1 ? grupos[c.grupo].nome : grupos[c.grupo].plural}`)
+                      .join(" e ")} para ${modalidade === "retirada" ? "retirada" : "entrega"}, mas não achei data no site.`,
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${classeBotaoEscuro} mt-3 w-full`}
+                >
+                  Falar com a gente no WhatsApp
+                </a>
+              </div>
+            )}
             {modalidade === "retirada" && (
               <div className="mt-5 animate-entrar">
                 <Campo rotulo="Horário da retirada" erro={errors.hora?.message}>

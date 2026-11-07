@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { produtos } from "@/config/campanha";
+import { grupoDoProduto, grupos, produtos, type Grupo } from "@/config/campanha";
 import { Logo } from "@/components/Logo";
 import { classeToque } from "@/components/Tela";
 import { dataCurta, linkWhatsapp, moeda, somenteDigitos } from "@/lib/formatar";
 import type { PedidoAdmin } from "@/lib/pedidosAdmin";
-import type { Disponibilidade } from "@/app/api/disponibilidade/route";
 import type { SituacaoData } from "@/lib/datas";
+import type { LimiteComUso } from "@/lib/vagas";
+import { PainelLimites } from "./PainelLimites";
 
 const rotulos: Record<string, { texto: string; cor: string }> = {
   pago: { texto: "Pago", cor: "bg-green-100 text-green-800" },
@@ -30,13 +31,14 @@ const filtros = [
 ] as const;
 
 const nomeProduto = (id: string) => produtos.find((p) => p.id === id)?.nome ?? id;
+const grupoDoItem = (i: { produto_id: string; grupo: string | null }) => i.grupo ?? grupoDoProduto(i.produto_id);
 const ativo = (s: string) => s === "pago" || s === "entregue";
 
 export default function Painel() {
   const router = useRouter();
   const [pedidos, setPedidos] = useState<PedidoAdmin[] | null>(null);
-  const [vagas, setVagas] = useState<Disponibilidade | null>(null);
-  const [aba, setAba] = useState<"pedidos" | "padaria" | "datas">("pedidos");
+  const [limites, setLimites] = useState<LimiteComUso[] | null>(null);
+  const [aba, setAba] = useState<"pedidos" | "padaria" | "datas" | "limites">("pedidos");
   const [datas, setDatas] = useState<{ datas: SituacaoData[]; antecedenciaDias: number } | null>(null);
   const [filtro, setFiltro] = useState<(typeof filtros)[number]["id"]>("pago");
   const [busca, setBusca] = useState("");
@@ -47,9 +49,9 @@ export default function Painel() {
     if (r.status === 401) return router.replace("/admin/login");
     if (r.status === 403) return router.replace("/admin/senha");
     if (r.ok) setPedidos((await r.json()).pedidos);
-    fetch("/api/disponibilidade", { cache: "no-store" })
+    fetch("/api/admin/limites", { cache: "no-store" })
       .then((d) => (d.ok ? d.json() : null))
-      .then((d) => d && setVagas(d));
+      .then((d) => d && setLimites(d.limites));
     fetch("/api/admin/datas", { cache: "no-store" })
       .then((d) => (d.ok ? d.json() : null))
       .then((d) => d && setDatas(d));
@@ -131,6 +133,27 @@ export default function Painel() {
     return [...porData.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [pedidos]);
 
+  // Unidades pagas ou entregues de cada produto, somando os sabores
+  const vendidos = (g: Grupo) =>
+    (pedidos ?? [])
+      .filter((p) => ativo(p.status))
+      .flatMap((p) => p.itens_pedido)
+      .filter((i) => grupoDoItem(i) === g)
+      .reduce((s, i) => s + i.quantidade, 0);
+
+  async function salvarLimite(id: string, limiteDia: number, limiteTotal: number | null) {
+    setOcupado(id);
+    const r = await fetch(`/api/admin/limites/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ limite_dia: limiteDia, limite_total: limiteTotal }),
+    });
+    if (!r.ok) window.alert("Não foi possível salvar o limite. Confira os números e tente de novo.");
+    await carregar();
+    setOcupado(null);
+    return r.ok;
+  }
+
   const contagem = (s: string) =>
     (pedidos ?? []).filter((p) => p.status === s || (s === "cancelado" && p.status === "expirado")).length;
 
@@ -160,18 +183,14 @@ export default function Painel() {
 
       <h1 className="mt-6 text-2xl font-bold tracking-tight">Reservas de Natal</h1>
 
-      {vagas && (
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-neutral-200 p-4">
-            <p className="text-sm text-neutral-500">Panetones disponíveis</p>
-            <p className="text-2xl font-bold">{vagas.produtos_restantes}</p>
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        {(Object.keys(grupos) as Grupo[]).map((g) => (
+          <div key={g} className="rounded-2xl border border-neutral-200 p-4">
+            <p className="text-sm text-neutral-500">{grupos[g].nome}: vendidos</p>
+            <p className="text-2xl font-bold">{vendidos(g)}</p>
           </div>
-          <div className="rounded-2xl border border-neutral-200 p-4">
-            <p className="text-sm text-neutral-500">Reservas pagas</p>
-            <p className="text-2xl font-bold">{contagem("pago") + contagem("entregue")}</p>
-          </div>
-        </div>
-      )}
+        ))}
+      </div>
 
       <div className="mt-6 flex rounded-xl bg-neutral-100 p-1 text-sm font-medium">
         {(
@@ -179,6 +198,7 @@ export default function Painel() {
             ["pedidos", "Pedidos"],
             ["padaria", "Padaria"],
             ["datas", "Datas"],
+            ["limites", "Limites"],
           ] as const
         ).map(([a, texto]) => (
           <button
@@ -385,6 +405,10 @@ export default function Painel() {
             );
           })}
         </section>
+      )}
+
+      {aba === "limites" && limites && (
+        <PainelLimites limites={limites} ocupado={ocupado} salvar={salvarLimite} />
       )}
 
       {aba === "padaria" && (

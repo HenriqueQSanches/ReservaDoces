@@ -22,14 +22,14 @@ export type PedidoAdmin = {
   pago_em: string | null;
   criado_em: string;
   mp_pagamento_id: string | null;
-  itens_pedido: { produto_id: string; quantidade: number; preco_centavos: number }[];
+  itens_pedido: { produto_id: string; grupo: string | null; quantidade: number; preco_centavos: number }[];
 };
 
 export async function listarPedidos() {
   const { data, error } = await bancoDeDados()
     .from("pedidos")
     .select(
-      "numero, status, nome, whatsapp, modalidade, data_recebimento, hora_retirada, cep, rua, numero_endereco, complemento, bairro, cidade, unidades, total_centavos, sinal_centavos, expira_em, pago_em, criado_em, mp_pagamento_id, itens_pedido(produto_id, quantidade, preco_centavos)",
+      "numero, status, nome, whatsapp, modalidade, data_recebimento, hora_retirada, cep, rua, numero_endereco, complemento, bairro, cidade, unidades, total_centavos, sinal_centavos, expira_em, pago_em, criado_em, mp_pagamento_id, itens_pedido(produto_id, grupo, quantidade, preco_centavos)",
     )
     .order("criado_em", { ascending: false })
     .limit(1000);

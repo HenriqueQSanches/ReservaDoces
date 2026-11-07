@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Modalidade } from "@/config/campanha";
+import type { VagasPorData } from "@/lib/vagas";
 
-// Datas que ainda aceitam reserva (o servidor aplica a antecedência e as escolhas manuais do Luiz)
+// Datas que ainda aceitam reserva, com quanto cabe de cada produto em cada uma.
+// O servidor aplica o fechamento automático, as escolhas manuais do Luiz e os limites.
 export function useDatasAbertas() {
-  const [datas, setDatas] = useState<Record<Modalidade, string[]> | null>(null);
+  const [datas, setDatas] = useState<VagasPorData | null>(null);
 
   useEffect(() => {
     const controle = new AbortController();

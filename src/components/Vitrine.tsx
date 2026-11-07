@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { campanha, produtos } from "@/config/campanha";
+import { campanha, grupos, produtos, type Grupo } from "@/config/campanha";
 import { CarrosselProduto } from "@/components/CarrosselProduto";
 import { Tela, classeBotaoAcao, classeBotaoEscuro, classeToque } from "@/components/Tela";
 import { useReserva } from "@/lib/reserva";
@@ -28,9 +28,11 @@ export function Vitrine({ esgotadoForcado = false }: { esgotadoForcado?: boolean
   const { itens, adicionar, remover, totalUnidades, totalCentavos } = useReserva();
   const disponibilidade = useDisponibilidade();
   const esgotado = esgotadoForcado || disponibilidade?.esgotado === true;
-  // Não deixa escolher mais unidades do que ainda existem
-  const semMaisUnidades =
-    disponibilidade !== null && totalUnidades >= disponibilidade.produtos_restantes;
+
+  // Não deixa escolher mais de um produto do que cabe na melhor data disponível (somando os sabores)
+  const noCarrinho = (grupo: Grupo) =>
+    produtos.filter((p) => p.grupo === grupo).reduce((s, p) => s + (itens[p.id] ?? 0), 0);
+  const maximo = (grupo: Grupo) => (disponibilidade ? disponibilidade.maximo[grupo] : Infinity);
 
   // Esgotado: só o aviso, sem produtos
   if (esgotado) {
@@ -70,20 +72,31 @@ export function Vitrine({ esgotadoForcado = false }: { esgotadoForcado?: boolean
         Entregas em {entregas}. Retiradas {retiradas}.
       </p>
 
-      <ul className="grid gap-14 md:grid-cols-3 md:gap-8">
+      <ul className="grid gap-14 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
         {produtos.map((produto) => {
           const qtd = itens[produto.id] ?? 0;
+          const produtoEsgotado = maximo(produto.grupo) === 0;
+          const noLimite = noCarrinho(produto.grupo) >= maximo(produto.grupo);
           return (
-            <li key={produto.id}>
+            <li key={produto.id} className={produtoEsgotado ? "opacity-60" : undefined}>
               <CarrosselProduto imagens={produto.imagens} nome={produto.nome} />
 
               <div className="mt-4 flex items-start justify-between gap-4">
                 <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">
+                    {grupos[produto.grupo].nome}
+                  </p>
                   <h2 className="text-xl font-semibold tracking-tight">{produto.nome}</h2>
-                  <p className="mt-0.5 text-sm text-neutral-500">{produto.descricao}</p>
+                  <p className="mt-1 text-sm text-neutral-500">{produto.descricao}</p>
+                  {produto.peso && <p className="mt-1 text-sm text-neutral-500">{produto.peso}</p>}
                 </div>
                 <p className="shrink-0 text-lg font-bold">{moeda(produto.precoCentavos)}</p>
               </div>
+
+              {produtoEsgotado && <p className="mt-3 text-sm font-semibold">Esgotado</p>}
+              {!produtoEsgotado && noLimite && qtd > 0 && (
+                <p className="mt-3 text-sm text-neutral-500">Você chegou ao máximo disponível deste produto.</p>
+              )}
 
               <div className="mt-4 flex items-center gap-3">
                 {qtd > 0 && (
@@ -105,7 +118,7 @@ export function Vitrine({ esgotadoForcado = false }: { esgotadoForcado?: boolean
                     vibrar();
                     adicionar(produto.id);
                   }}
-                  disabled={semMaisUnidades}
+                  disabled={noLimite}
                   className={`${classeBotaoEscuro} relative flex-1 disabled:bg-neutral-300 disabled:active:scale-100`}
                 >
                   Reservar

@@ -1,4 +1,3 @@
-import { campanha } from "@/config/campanha";
 import { bancoDeDados } from "@/lib/supabase";
 import { criarCobranca, pagamentoConfigurado } from "@/lib/mercadopago";
 
@@ -35,8 +34,6 @@ export async function POST(_request: Request, ctx: RouteContext<"/api/pedidos/[n
     await banco.rpc("confirmar_pagamento", {
       p_numero: numero,
       p_pagamento_id: "simulado",
-      p_limite_reservas: campanha.limiteReservas,
-      p_limite_produtos: campanha.limiteProdutos,
     });
     return resposta({ ok: true, url: `/pedido/${numero}` }, 200);
   }
