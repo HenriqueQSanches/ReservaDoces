@@ -16,6 +16,7 @@ export const esquemaDados = z
       .string()
       .refine((v) => v === "retirada" || v === "entrega", "Escolha retirar ou receber em casa"),
     data: z.string().min(1, "Escolha uma data"),
+    hora: z.string(),
     cep: z.string(),
     rua: z.string(),
     numero: z.string(),
@@ -28,6 +29,13 @@ export const esquemaDados = z
       d.modalidade === "retirada" || d.modalidade === "entrega" ? campanha.datas[d.modalidade] : [];
     if (d.data && !datas.includes(d.data))
       ctx.addIssue({ code: "custom", path: ["data"], message: "Escolha uma data" });
+
+    // Retirada tem hora marcada (de hora em hora); entrega não tem escolha de horário
+    if (d.modalidade === "retirada") {
+      const horas = campanha.horariosRetirada.map(String);
+      if (!horas.includes(d.hora))
+        ctx.addIssue({ code: "custom", path: ["hora"], message: "Escolha o horário da retirada" });
+    }
 
     if (d.modalidade !== "entrega") return;
     const exigir = (campo: "rua" | "numero" | "bairro", mensagem: string) => {

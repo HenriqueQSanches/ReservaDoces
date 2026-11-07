@@ -8,7 +8,14 @@ import { useReserva } from "@/lib/reserva";
 import { useDisponibilidade } from "@/lib/disponibilidade";
 import { dataCurta, linkWhatsapp, moeda } from "@/lib/formatar";
 
-const todasAsDatas = [...new Set([...campanha.datas.entrega, ...campanha.datas.retirada])].sort();
+// "12/12 e 19/12" para a entrega; "de 16/12 a 23/12" para a retirada
+const diaMes = (iso: string) => dataCurta(iso).split(", ")[1];
+const listar = (datas: string[]) => datas.map(diaMes).join(", ").replace(/, ([^,]+)$/, " e $1");
+const entregas = listar(campanha.datas.entrega);
+const retiradas = (() => {
+  const d = campanha.datas.retirada;
+  return d.length > 2 ? `de ${diaMes(d[0])} a ${diaMes(d[d.length - 1])}` : listar(d);
+})();
 
 // Vibração curta de confirmação. Só o Android permite pelo navegador; no iPhone não faz nada.
 function vibrar() {
@@ -60,7 +67,7 @@ export function Vitrine({ esgotadoForcado = false }: { esgotadoForcado?: boolean
       }
     >
       <p className="mb-10 text-center text-sm text-neutral-500">
-        Entregas e retiradas em {todasAsDatas.map(dataCurta).join(", ")}
+        Entregas em {entregas}. Retiradas {retiradas}.
       </p>
 
       <ul className="grid gap-14 md:grid-cols-3 md:gap-8">

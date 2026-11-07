@@ -8,6 +8,7 @@ export type DadosCliente = {
   whatsapp: string;
   modalidade: Modalidade;
   data: string;
+  hora?: string;
   cep?: string;
   rua?: string;
   numero?: string;

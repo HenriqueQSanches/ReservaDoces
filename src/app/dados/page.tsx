@@ -30,6 +30,7 @@ const vazio: Formulario = {
   whatsapp: "",
   modalidade: "",
   data: "",
+  hora: "",
   cep: "",
   rua: "",
   numero: "",
@@ -147,7 +148,12 @@ export default function Dados() {
 
         <Campo rotulo="Como você quer receber?" erro={errors.modalidade?.message}>
           <select
-            {...register("modalidade", { onChange: () => setValue("data", "") })}
+            {...register("modalidade", {
+              onChange: () => {
+                setValue("data", "");
+                setValue("hora", "");
+              },
+            })}
             aria-invalid={!!errors.modalidade}
             className={classeCampo}
           >
@@ -216,6 +222,20 @@ export default function Dados() {
                 ))}
               </select>
             </Campo>
+            {modalidade === "retirada" && (
+              <div className="mt-5 animate-entrar">
+                <Campo rotulo="Horário da retirada" erro={errors.hora?.message}>
+                  <select {...register("hora")} aria-invalid={!!errors.hora} className={classeCampo}>
+                    <option value="">Selecione</option>
+                    {campanha.horariosRetirada.map((h) => (
+                      <option key={h} value={String(h)}>
+                        {h}h
+                      </option>
+                    ))}
+                  </select>
+                </Campo>
+              </div>
+            )}
             <a
               href={linkWhatsapp(
                 campanha.whatsapp,

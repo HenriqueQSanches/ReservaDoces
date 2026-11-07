@@ -100,6 +100,7 @@ export default function Resumo() {
           <p className="text-neutral-600">{dados.whatsapp}</p>
           <p className="pt-2 font-semibold">
             {retirada ? "Retirada" : "Entrega"} em {dataCurta(dados.data)}
+            {retirada && dados.hora ? `, às ${dados.hora}h` : ""}
           </p>
           <p className="text-neutral-600">
             {retirada
