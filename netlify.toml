@@ -1,9 +1,0 @@
-# Publicação na Netlify. As variáveis de ambiente (Supabase e Mercado Pago) ficam no painel da Netlify, nunca aqui.
-[build]
-  command = "npm run build"
-
-[build.environment]
-  NODE_VERSION = "24"
-
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
