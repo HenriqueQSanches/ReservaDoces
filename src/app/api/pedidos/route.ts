@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { campanha, produtos } from "@/config/campanha";
+import { campanha, produtos, type Modalidade } from "@/config/campanha";
+import { datasAbertas } from "@/lib/datas";
 import { esquemaDados } from "@/lib/esquema";
 import { bancoDeDados } from "@/lib/supabase";
 
@@ -10,7 +11,11 @@ const esquemaPedido = z.object({
 
 export type RespostaCriarPedido =
   | { ok: true; numero: string }
-  | { ok: false; motivo: "esgotado" | "poucas_unidades" | "dados_invalidos" | "erro"; produtos_restantes?: number };
+  | {
+      ok: false;
+      motivo: "esgotado" | "poucas_unidades" | "data_fechada" | "dados_invalidos" | "erro";
+      produtos_restantes?: number;
+    };
 
 // Cria o pedido pendente e segura a vaga. Preço e total saem daqui, nunca do navegador.
 export async function POST(request: Request) {
@@ -22,6 +27,11 @@ export async function POST(request: Request) {
     return produto && { produto_id: produto.id, quantidade, preco_centavos: produto.precoCentavos };
   });
   if (itens.length === 0 || itens.some((i) => !i)) return resposta({ ok: false, motivo: "dados_invalidos" }, 400);
+
+  // A data pode ter fechado (sozinha ou à mão) entre a tela 2 e o pagamento
+  const modalidade = corpo.data.dados.modalidade as Modalidade;
+  if (!(await datasAbertas())[modalidade].includes(corpo.data.dados.data))
+    return resposta({ ok: false, motivo: "data_fechada" }, 409);
 
   const validos = itens.filter((i) => i !== undefined);
   const totalCentavos = validos.reduce((s, i) => s + i.quantidade * i.preco_centavos, 0);

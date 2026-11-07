@@ -26,6 +26,9 @@ export const campanha = {
     // Entrega: dois dias fixos, sem escolha de horário
     entrega: ["2026-12-12", "2026-12-19"],
   } satisfies Record<Modalidade, string[]>,
+  // Cada data sai do site sozinha esses dias antes (com 2, no dia 16 o dia 18 já não aparece).
+  // O Luiz pode fechar ou reabrir qualquer data à mão no painel, por cima disso.
+  antecedenciaDias: 2,
   // Horários de retirada, de hora em hora
   horariosRetirada: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
 };

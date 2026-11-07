@@ -23,6 +23,6 @@
   },
   "vars": {
     // Endereço público do site (prévia do link e retorno do Mercado Pago). Ajustar quando tiver domínio próprio.
-    "URL": "https://reservas-natal.henrique-sanches-oficial.workers.dev"
+    "URL": "https://reservas-natal.nathaliaperissato.workers.dev"
   }
 }

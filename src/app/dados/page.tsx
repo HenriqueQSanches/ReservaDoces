@@ -9,6 +9,7 @@ import { campanha, type Modalidade } from "@/config/campanha";
 import { Tela, classeBotaoAcao } from "@/components/Tela";
 import { useReserva } from "@/lib/reserva";
 import { esquemaDados } from "@/lib/esquema";
+import { useDatasAbertas } from "@/lib/datasAbertas";
 import {
   dataCurta,
   linkWhatsapp,
@@ -90,7 +91,8 @@ export default function Dados() {
 
   const modalidade = useWatch({ control, name: "modalidade" }) as Modalidade | "";
   const cep = useWatch({ control, name: "cep" });
-  const datas = modalidade ? campanha.datas[modalidade] : [];
+  const abertas = useDatasAbertas();
+  const datas = modalidade && abertas ? abertas[modalidade] : [];
 
   useEffect(() => {
     const digitos = somenteDigitos(cep);
@@ -214,7 +216,9 @@ export default function Dados() {
               erro={errors.data?.message}
             >
               <select {...register("data")} aria-invalid={!!errors.data} className={classeCampo}>
-                <option value="">Selecione</option>
+                <option value="">
+                  {!abertas ? "Carregando datas..." : datas.length === 0 ? "Nenhuma data disponível" : "Selecione"}
+                </option>
                 {datas.map((d) => (
                   <option key={d} value={d}>
                     {dataCurta(d)}

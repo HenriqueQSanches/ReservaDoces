@@ -16,7 +16,7 @@ export default function Resumo() {
   const { carregado, itens, dados, pedido, salvarPedido, totalUnidades, totalCentavos, restanteCentavos } =
     useReserva();
   const [enviando, setEnviando] = useState(false);
-  const [aviso, setAviso] = useState<{ texto: string; link?: string } | null>(null);
+  const [aviso, setAviso] = useState<{ texto: string; link?: string; rotulo?: string } | null>(null);
 
   useEffect(() => {
     if (!carregado) return;
@@ -54,7 +54,9 @@ export default function Resumo() {
                     texto: `Restam só ${resposta.produtos_restantes} unidades. Ajuste a quantidade para continuar.`,
                     link: "/",
                   }
-                : { texto: "Não conseguimos registrar sua reserva. Tente de novo em instantes." },
+                : resposta.motivo === "data_fechada"
+                  ? { texto: "A data escolhida não está mais disponível. Escolha outra data.", link: "/dados", rotulo: "Escolher outra data" }
+                  : { texto: "Não conseguimos registrar sua reserva. Tente de novo em instantes." },
           );
           setEnviando(false);
           return;
@@ -113,7 +115,7 @@ export default function Resumo() {
           <p className="font-medium text-red-700">{aviso.texto}</p>
           {aviso.link && (
             <Link href={aviso.link} className="mt-2 inline-block font-medium underline underline-offset-4">
-              Voltar para os produtos
+              {aviso.rotulo ?? "Voltar para os produtos"}
             </Link>
           )}
         </div>
