@@ -1,0 +1,19 @@
+# O Supabase grátis pausa o banco depois de 7 dias sem acesso.
+# Uma vez por dia este job consulta as vagas do site, o que acessa o banco e o mantém ativo.
+name: Manter o banco ativo
+
+on:
+  schedule:
+    # 9h de Brasília (12h UTC), todo dia
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+
+jobs:
+  acessar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar as vagas do site
+        run: |
+          resposta=$(curl -sS --fail --retry 3 --retry-delay 20 https://reservas-natal.nathaliaperissato.workers.dev/api/disponibilidade)
+          echo "$resposta"
+          echo "$resposta" | grep -q '"maximo"'
