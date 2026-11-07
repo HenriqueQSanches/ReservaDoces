@@ -84,6 +84,16 @@ export const produtos: Produto[] = [
     precoCentavos: 12500,
     imagens: ["/produtos/exemplo-1.svg", "/produtos/exemplo-2.svg", "/produtos/exemplo-3.svg"],
   },
+  {
+    id: "torta-cookie-red-velvet",
+    grupo: "torta",
+    nome: "Torta Cookie Red-Velvet",
+    descricao:
+      "Torta Cookie de massa red-velvet recheada com Brigadeiro de Ninho, Geleia de Morango artesanal e finalizada com gotas de Chocolate branco.",
+    peso: "Aprox. 1,1kg",
+    precoCentavos: 12500,
+    imagens: ["/produtos/exemplo-2.svg", "/produtos/exemplo-3.svg", "/produtos/exemplo-1.svg"],
+  },
 ];
 
 export const grupoDoProduto = (produtoId: string) => produtos.find((p) => p.id === produtoId)?.grupo;
