@@ -9,10 +9,12 @@ import { Tela, classeBotaoAcao } from "@/components/Tela";
 import { useReserva } from "@/lib/reserva";
 import { dataCurta, moeda } from "@/lib/formatar";
 import type { RespostaCriarPedido } from "@/app/api/pedidos/route";
+import type { RespostaPagamento } from "@/app/api/pedidos/[numero]/pagamento/route";
 
 export default function Resumo() {
   const router = useRouter();
-  const { carregado, itens, dados, totalUnidades, totalCentavos, restanteCentavos } = useReserva();
+  const { carregado, itens, dados, pedido, salvarPedido, totalUnidades, totalCentavos, restanteCentavos } =
+    useReserva();
   const [enviando, setEnviando] = useState(false);
   const [aviso, setAviso] = useState<{ texto: string; link?: string } | null>(null);
 
@@ -27,38 +29,61 @@ export default function Resumo() {
   const escolhidos = produtos.filter((p) => itens[p.id]);
   const retirada = dados.modalidade === "retirada";
 
-  // Cria o pedido no banco (segura a vaga por 15 minutos).
-  // Provisório até o Mercado Pago: no desenvolvimento, o pagamento é simulado logo em seguida.
+  // 1. Cria o pedido no banco (segura a vaga por 15 minutos), ou reaproveita o pendente
+  //    de uma tentativa anterior. 2. Pede o link de pagamento e leva a cliente ao Mercado Pago.
   async function pagar() {
     setEnviando(true);
     setAviso(null);
     try {
-      const r = await fetch("/api/pedidos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itens, dados }),
-      });
-      const resposta: RespostaCriarPedido = await r.json();
+      let numero = pedido;
 
-      if (!resposta.ok) {
-        setAviso(
-          resposta.motivo === "esgotado"
-            ? { texto: "As reservas acabaram enquanto você preenchia.", link: "/" }
-            : resposta.motivo === "poucas_unidades"
-              ? {
-                  texto: `Restam só ${resposta.produtos_restantes} unidades. Ajuste a quantidade para continuar.`,
-                  link: "/",
-                }
-              : { texto: "Não conseguimos registrar sua reserva. Tente de novo em instantes." },
-        );
+      if (!numero) {
+        const r = await fetch("/api/pedidos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ itens, dados }),
+        });
+        const resposta: RespostaCriarPedido = await r.json();
+
+        if (!resposta.ok) {
+          setAviso(
+            resposta.motivo === "esgotado"
+              ? { texto: "As reservas acabaram enquanto você preenchia.", link: "/" }
+              : resposta.motivo === "poucas_unidades"
+                ? {
+                    texto: `Restam só ${resposta.produtos_restantes} unidades. Ajuste a quantidade para continuar.`,
+                    link: "/",
+                  }
+                : { texto: "Não conseguimos registrar sua reserva. Tente de novo em instantes." },
+          );
+          setEnviando(false);
+          return;
+        }
+        numero = resposta.numero;
+        salvarPedido(numero);
+      }
+
+      const p = await fetch(`/api/pedidos/${numero}/pagamento`, { method: "POST" });
+      const pagamento: RespostaPagamento = await p.json();
+
+      if (!pagamento.ok) {
+        if (pagamento.motivo === "ja_pago") {
+          router.push(`/pedido/${numero}`);
+          return;
+        }
+        // Pedido pendente venceu: a próxima tentativa cria outro
+        salvarPedido(null);
+        setAviso({
+          texto:
+            pagamento.motivo === "expirado" || pagamento.motivo === "nao_encontrado"
+              ? "Sua reserva anterior venceu. Toque de novo para reservar outra vez."
+              : "Não conseguimos abrir o pagamento. Tente de novo em instantes.",
+        });
         setEnviando(false);
         return;
       }
 
-      if (process.env.NODE_ENV !== "production") {
-        await fetch(`/api/pedidos/${resposta.numero}/simular-pagamento`, { method: "POST" });
-      }
-      router.push(`/pedido/${resposta.numero}`);
+      window.location.assign(pagamento.url);
     } catch {
       setAviso({ texto: "Não conseguimos registrar sua reserva. Confira sua internet e tente de novo." });
       setEnviando(false);

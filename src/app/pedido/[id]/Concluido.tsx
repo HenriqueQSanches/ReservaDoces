@@ -21,7 +21,8 @@ function lerResultado(statusBanco: StatusPedido, statusUrl: string | null): Resu
 }
 
 // Lê o status do pedido e repete a cada 3 segundos enquanto o pagamento não se resolve.
-function useStatusPedido(numero: string) {
+// Se a cliente voltou do Mercado Pago com o número do pagamento, confere lá antes de ler o status.
+function useStatusPedido(numero: string, pagamentoId: string | null) {
   const [status, setStatus] = useState<StatusPedido | "nao_encontrado" | null>(null);
 
   useEffect(() => {
@@ -29,7 +30,19 @@ function useStatusPedido(numero: string) {
     let tentativas = 0;
     let espera: ReturnType<typeof setTimeout>;
 
+    async function conferirNoMercadoPago() {
+      if (!pagamentoId) return;
+      try {
+        await fetch(`/api/pedidos/${numero}/conferir`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pagamentoId }),
+        });
+      } catch {}
+    }
+
     async function consultar() {
+      if (tentativas === 0) await conferirNoMercadoPago();
       try {
         const r = await fetch(`/api/pedidos/${numero}`, { cache: "no-store" });
         if (!ativo) return;
@@ -48,7 +61,7 @@ function useStatusPedido(numero: string) {
       ativo = false;
       clearTimeout(espera);
     };
-  }, [numero]);
+  }, [numero, pagamentoId]);
 
   return status;
 }
@@ -85,8 +98,11 @@ const icones: Record<Resultado, React.ReactNode> = {
 
 export function Concluido() {
   const { id } = useParams<{ id: string }>();
-  const statusUrl = useSearchParams().get("status");
-  const statusBanco = useStatusPedido(id);
+  const parametros = useSearchParams();
+  const statusUrl = parametros.get("status");
+  // O Mercado Pago volta com payment_id (ou collection_id, nas versões antigas)
+  const pagamentoId = parametros.get("payment_id") ?? parametros.get("collection_id");
+  const statusBanco = useStatusPedido(id, pagamentoId);
   const resultado =
     statusBanco === null || statusBanco === "nao_encontrado" ? null : lerResultado(statusBanco, statusUrl);
   const { carregado, limpar } = useReserva();
