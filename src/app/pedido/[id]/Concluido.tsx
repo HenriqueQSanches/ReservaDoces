@@ -135,7 +135,7 @@ export function Concluido() {
   const whatsapp = linkWhatsapp(
     campanha.whatsapp,
     resultado === "recusado"
-      ? `Olá! Tive um problema para pagar o sinal do pedido ${id}.`
+      ? `Olá! Tive um problema para pagar o pedido ${id}.`
       : `Olá! Quero acompanhar meu pedido ${id}.`,
   );
 
@@ -196,7 +196,7 @@ export function Concluido() {
             Pagamento não concluído
           </h1>
           <p className="mt-2 animate-entrar leading-relaxed text-neutral-600">
-            O pagamento do sinal não foi aprovado. Você pode tentar de novo, se quiser com outra forma
+            O pagamento não foi aprovado. Você pode tentar de novo, se quiser com outra forma
             de pagamento.
           </p>
           <Link href="/reserva" className={`${classeBotaoAcao} mt-8 animate-entrar`}>

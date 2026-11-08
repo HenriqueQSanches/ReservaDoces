@@ -17,6 +17,10 @@ export type Limite = {
 export type LimiteComUso = Limite & {
   ocupadoBloco: number;
   ocupadoPorDia: Record<string, number>;
+  // Limite que vale em cada dia: o do dia específico, se o Luiz definiu, ou o "por dia" do bloco
+  limitePorDia: Record<string, number>;
+  // Só os dias com limite próprio (tabela limites_por_dia)
+  ajustesPorDia: Record<string, number>;
 };
 
 // Quanto ainda cabe de cada grupo em cada data aberta, por modalidade
@@ -26,12 +30,15 @@ const nomesGrupos = Object.keys(grupos) as Grupo[];
 
 export async function limitesComUso(): Promise<LimiteComUso[]> {
   const banco = bancoDeDados();
-  const [{ data: limites, error: e1 }, { data: ocupadas, error: e2 }] = await Promise.all([
+  const [{ data: limites, error: e1 }, { data: ocupadas, error: e2 }, { data: ajustes, error: e3 }] = await Promise.all([
     banco.from("limites").select("*").order("ordem"),
     banco.rpc("unidades_ocupadas"),
+    banco.from("limites_por_dia").select("limite_id, data, limite"),
   ]);
   if (e1) throw e1;
   if (e2) throw e2;
+  if (e3) throw e3;
+  const porDia = (ajustes ?? []) as { limite_id: string; data: string; limite: number }[];
 
   const uso = (ocupadas ?? []) as { grupo: string; modalidade: string; data: string; unidades: number }[];
   return (limites as Limite[]).map((l) => {
@@ -44,13 +51,17 @@ export async function limitesComUso(): Promise<LimiteComUso[]> {
       ]),
     );
     const ocupadoBloco = Object.values(ocupadoPorDia).reduce((s, n) => s + n, 0);
-    return { ...l, ocupadoPorDia, ocupadoBloco };
+    const ajustesPorDia = Object.fromEntries(
+      porDia.filter((a) => a.limite_id === l.id && l.datas.includes(a.data)).map((a) => [a.data, a.limite]),
+    );
+    const limitePorDia = Object.fromEntries(l.datas.map((d) => [d, ajustesPorDia[d] ?? l.limite_dia]));
+    return { ...l, ocupadoPorDia, ocupadoBloco, limitePorDia, ajustesPorDia };
   });
 }
 
 // Mesmo cálculo da função pedido_cabe do banco: o menor entre o que sobra no dia e o que sobra no bloco
 function restanteNoDia(l: LimiteComUso, data: string) {
-  const dia = l.limite_dia - (l.ocupadoPorDia[data] ?? 0);
+  const dia = (l.limitePorDia[data] ?? l.limite_dia) - (l.ocupadoPorDia[data] ?? 0);
   const bloco = l.limite_total == null ? Infinity : l.limite_total - l.ocupadoBloco;
   return Math.max(0, Math.min(dia, bloco));
 }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { campanha, produtos, type Grupo, type Modalidade } from "@/config/campanha";
+import { campanha, produtos, sinalDoPedido, type Grupo, type Modalidade } from "@/config/campanha";
 import { datasAbertas } from "@/lib/datas";
 import { esquemaDados } from "@/lib/esquema";
 import { bancoDeDados } from "@/lib/supabase";
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   const totalCentavos = validos.reduce((s, i) => s + i.quantidade * i.preco_centavos, 0);
 
   const { data, error } = await bancoDeDados().rpc("criar_pedido", {
-    p_pedido: { ...corpo.data.dados, total_centavos: totalCentavos, sinal_centavos: campanha.sinalCentavos },
+    p_pedido: { ...corpo.data.dados, total_centavos: totalCentavos, sinal_centavos: sinalDoPedido(totalCentavos) },
     p_itens: validos,
     p_validade_minutos: campanha.validadeMinutos,
   });

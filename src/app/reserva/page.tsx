@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { campanha, grupos, produtos } from "@/config/campanha";
-import { Tela, classeBotaoAcao } from "@/components/Tela";
+import { campanha, grupos, nomesOpcoes, opcoesDePagamento, produtos, type OpcaoPagamento } from "@/config/campanha";
+import { Tela, classeBotaoAcao, classeToque } from "@/components/Tela";
 import { useReserva } from "@/lib/reserva";
 import { dataCurta, moeda } from "@/lib/formatar";
 import type { RespostaCriarPedido } from "@/app/api/pedidos/route";
@@ -13,9 +13,9 @@ import type { RespostaPagamento } from "@/app/api/pedidos/[numero]/pagamento/rou
 
 export default function Resumo() {
   const router = useRouter();
-  const { carregado, itens, dados, pedido, salvarPedido, totalUnidades, totalCentavos, restanteCentavos } =
-    useReserva();
+  const { carregado, itens, dados, pedido, salvarPedido, totalUnidades, totalCentavos } = useReserva();
   const [enviando, setEnviando] = useState(false);
+  const [opcao, setOpcao] = useState<OpcaoPagamento>("sinal");
   const [aviso, setAviso] = useState<{ texto: string; link?: string; rotulo?: string } | null>(null);
 
   useEffect(() => {
@@ -28,6 +28,10 @@ export default function Resumo() {
 
   const escolhidos = produtos.filter((p) => itens[p.id]);
   const retirada = dados.modalidade === "retirada";
+  // Só o sinal, metade ou tudo. Se a opção escolhida sumiu (carrinho mudou), volta para o sinal.
+  const opcoes = opcoesDePagamento(totalCentavos);
+  const escolhida = opcoes.find((o) => o.opcao === opcao) ?? opcoes[0];
+  const restanteCentavos = Math.max(0, totalCentavos - escolhida.centavos);
 
   // 1. Cria o pedido no banco (segura a vaga por 15 minutos), ou reaproveita o pendente
   //    de uma tentativa anterior. 2. Pede o link de pagamento e leva a cliente ao Mercado Pago.
@@ -67,7 +71,11 @@ export default function Resumo() {
         salvarPedido(numero);
       }
 
-      const p = await fetch(`/api/pedidos/${numero}/pagamento`, { method: "POST" });
+      const p = await fetch(`/api/pedidos/${numero}/pagamento`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ opcao: escolhida.opcao }),
+      });
       const pagamento: RespostaPagamento = await p.json();
 
       if (!pagamento.ok) {
@@ -105,7 +113,7 @@ export default function Resumo() {
               Abrindo pagamento...
             </>
           ) : (
-            `Pagar sinal de ${moeda(campanha.sinalCentavos)}`
+            `${escolhida.opcao === "sinal" ? "Pagar sinal de" : "Pagar"} ${moeda(escolhida.centavos)}`
           )}
         </button>
       }
@@ -170,14 +178,43 @@ export default function Resumo() {
         </section>
       </div>
 
-      <section className="mt-6 rounded-2xl border-2 border-neutral-900 p-5 shadow-sm">
-        <div className="flex items-center justify-between">
-          <span className="font-semibold">Valor do sinal a ser pago</span>
-          <span className="text-2xl font-black">{moeda(campanha.sinalCentavos)}</span>
+      <section className="mt-6">
+        <h2 className="mb-3 font-semibold">Quanto você quer pagar agora?</h2>
+        <div role="radiogroup" aria-label="Quanto pagar agora" className="space-y-2">
+          {opcoes.map((o) => {
+            const ativa = o.opcao === escolhida.opcao;
+            return (
+              <button
+                key={o.opcao}
+                type="button"
+                role="radio"
+                aria-checked={ativa}
+                onClick={() => setOpcao(o.opcao)}
+                className={`${classeToque} flex w-full items-center gap-3 rounded-2xl p-4 text-left ${
+                  ativa ? "border-2 border-neutral-900 shadow-sm" : "border border-neutral-200 px-[17px] py-[17px]"
+                }`}
+              >
+                <span
+                  className={`flex size-5 shrink-0 items-center justify-center rounded-full border-2 ${ativa ? "border-neutral-900" : "border-neutral-300"}`}
+                >
+                  {ativa && <span className="size-2.5 rounded-full bg-neutral-900" />}
+                </span>
+                <span className="flex-1">
+                  <span className="block font-semibold">{nomesOpcoes[o.opcao]}</span>
+                  {o.opcao === "sinal" && (
+                    <span className="block text-xs text-neutral-500">
+                      {campanha.sinalPercentual}% do pedido, com mínimo de {moeda(campanha.sinalMinimoCentavos)}
+                    </span>
+                  )}
+                </span>
+                <span className={`text-lg ${ativa ? "font-black" : "font-semibold text-neutral-600"}`}>{moeda(o.centavos)}</span>
+              </button>
+            );
+          })}
         </div>
-        <div className="mt-2 flex justify-between text-sm text-neutral-600">
+        <div className="mt-3 flex justify-between px-1 text-sm text-neutral-600">
           <span>Restante a pagar {retirada ? "na retirada" : "na entrega"}</span>
-          <span>{moeda(restanteCentavos)}</span>
+          <span className="font-medium text-neutral-900">{restanteCentavos > 0 ? moeda(restanteCentavos) : "Nada"}</span>
         </div>
       </section>
 
@@ -185,7 +222,8 @@ export default function Resumo() {
         <h2 className="font-semibold text-neutral-900">Formas de pagamento</h2>
         <p>Pix, cartão de crédito ou débito, na página segura do Mercado Pago.</p>
         <p>
-          O sinal garante a sua reserva e não é devolvido em caso de desistência.
+          O sinal garante a sua reserva. Se precisar desistir, o sinal não é devolvido; o que você pagou além dele, a
+          gente devolve.
         </p>
       </section>
     </Tela>

@@ -1,6 +1,7 @@
 import { produtos } from "@/config/campanha";
 import { exigirAdmin } from "@/lib/admin";
 import { listarPedidos } from "@/lib/pedidosAdmin";
+import { faltaDoPedido } from "@/lib/valores";
 
 // Planilha dos pedidos, separada por ponto e vírgula (abre direto no Excel em português)
 export async function GET() {
@@ -28,6 +29,7 @@ export async function GET() {
     "Unidades",
     "Total (R$)",
     "Sinal (R$)",
+    "Pago (R$)",
     "Restante (R$)",
     "Criado em",
   ];
@@ -46,7 +48,8 @@ export async function GET() {
     p.unidades,
     reais(p.total_centavos),
     reais(p.sinal_centavos),
-    reais(Math.max(0, p.total_centavos - p.sinal_centavos)),
+    p.pago_centavos != null ? reais(p.pago_centavos) : "",
+    reais(faltaDoPedido(p)),
     new Date(p.criado_em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
   ]);
 

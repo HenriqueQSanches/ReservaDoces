@@ -8,9 +8,10 @@ import { Logo } from "@/components/Logo";
 import { classeToque } from "@/components/Tela";
 import { dataCurta, linkWhatsapp, moeda, somenteDigitos } from "@/lib/formatar";
 import type { PedidoAdmin } from "@/lib/pedidosAdmin";
+import { devolverSeDesistir, faltaDoPedido, pagoDoPedido } from "@/lib/valores";
 import type { SituacaoData } from "@/lib/datas";
 import type { LimiteComUso } from "@/lib/vagas";
-import { PainelLimites } from "./PainelLimites";
+import { PainelLimites, type MudancasDias } from "./PainelLimites";
 
 const rotulos: Record<string, { texto: string; cor: string }> = {
   pago: { texto: "Pago", cor: "bg-green-100 text-green-800" },
@@ -141,12 +142,12 @@ export default function Painel() {
       .filter((i) => grupoDoItem(i) === g)
       .reduce((s, i) => s + i.quantidade, 0);
 
-  async function salvarLimite(id: string, limiteDia: number, limiteTotal: number | null) {
+  async function salvarLimite(id: string, limiteDia: number, limiteTotal: number | null, dias: MudancasDias) {
     setOcupado(id);
     const r = await fetch(`/api/admin/limites/${id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ limite_dia: limiteDia, limite_total: limiteTotal }),
+      body: JSON.stringify({ limite_dia: limiteDia, limite_total: limiteTotal, dias }),
     });
     if (!r.ok) window.alert("Não foi possível salvar o limite. Confira os números e tente de novo.");
     await carregar();
@@ -250,7 +251,8 @@ export default function Painel() {
           <ul className="mt-4 space-y-3">
             {visiveis.map((p) => {
               const rotulo = rotulos[p.status] ?? { texto: p.status, cor: "bg-neutral-100" };
-              const restante = Math.max(0, p.total_centavos - p.sinal_centavos);
+              const restante = faltaDoPedido(p);
+              const devolver = devolverSeDesistir(p);
               return (
                 <li key={p.numero} className="rounded-2xl border border-neutral-200 p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -283,7 +285,7 @@ export default function Painel() {
                   </ul>
 
                   <p className="mt-2 text-sm text-neutral-600">
-                    Total {moeda(p.total_centavos)} · sinal {moeda(p.sinal_centavos)} · falta {moeda(restante)}
+                    Total {moeda(p.total_centavos)} · {p.pago_centavos != null ? "pago" : "sinal"} {moeda(pagoDoPedido(p))} · falta {moeda(restante)}
                   </p>
 
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -323,7 +325,9 @@ export default function Painel() {
                           mudarStatus(
                             p.numero,
                             "cancelado",
-                            `Cancelar o pedido ${p.numero}? A vaga volta a ficar disponível. O sinal não volta sozinho: se for o caso de devolver, é pelo Mercado Pago.`,
+                            devolver > 0
+                              ? `Cancelar o pedido ${p.numero}? A vaga volta a ficar disponível. Ela pagou mais que o sinal: se foi desistência, o sinal fica com vocês e a diferença de ${moeda(devolver)} é devolvida pelo Mercado Pago (não volta sozinha).`
+                              : `Cancelar o pedido ${p.numero}? A vaga volta a ficar disponível. O sinal não volta sozinho: se for o caso de devolver, é pelo Mercado Pago.`,
                           )
                         }
                         className={`${classeToque} rounded-lg border border-neutral-300 px-3 py-2 text-sm text-red-700 disabled:opacity-50`}

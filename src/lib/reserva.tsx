@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useMemo, useSyncExternalStore } from "react";
-import { campanha, produtos, type Modalidade } from "@/config/campanha";
+import { produtos, sinalDoPedido, type Modalidade } from "@/config/campanha";
 
 export type DadosCliente = {
   nome: string;
@@ -28,6 +28,7 @@ type ContextoReserva = Estado & {
   carregado: boolean;
   totalUnidades: number;
   totalCentavos: number;
+  sinalCentavos: number;
   restanteCentavos: number;
   adicionar: (produtoId: string) => void;
   remover: (produtoId: string) => void;
@@ -105,7 +106,8 @@ export function ReservaProvider({ children }: { children: React.ReactNode }) {
       carregado: estado !== null,
       totalUnidades,
       totalCentavos,
-      restanteCentavos: Math.max(0, totalCentavos - campanha.sinalCentavos),
+      sinalCentavos: sinalDoPedido(totalCentavos),
+      restanteCentavos: Math.max(0, totalCentavos - sinalDoPedido(totalCentavos)),
       ...acoes,
     };
   }, [estado]);

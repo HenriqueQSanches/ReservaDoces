@@ -1,7 +1,8 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { MercadoPagoConfig, Payment, Preference } from "mercadopago";
-import { campanha } from "@/config/campanha";
+import type { OpcaoPagamento } from "@/config/campanha";
+import { bancoDeDados } from "@/lib/supabase";
 
 // Tudo aqui roda só no servidor: o token nunca chega ao navegador.
 
@@ -23,13 +24,16 @@ export function enderecoDoSite() {
 type Cobranca = {
   numero: string;
   nome: string;
-  sinalCentavos: number;
+  valorCentavos: number;
+  opcao: OpcaoPagamento;
   expiraEm: string;
 };
 
-// Cria a cobrança do sinal no Mercado Pago (Checkout Pro) e devolve o link de pagamento.
-// Pix, crédito e débito; sem boleto (demora dias) e sem parcelamento (é um sinal).
-export async function criarCobranca({ numero, nome, sinalCentavos, expiraEm }: Cobranca) {
+// Cria a cobrança no Mercado Pago (Checkout Pro) e devolve o link de pagamento.
+// O valor é o da opção escolhida (sinal, metade ou tudo), calculado no servidor.
+// Pix, crédito e débito; sem boleto (demora dias) e sem parcelamento.
+export async function criarCobranca({ numero, nome, valorCentavos, opcao, expiraEm }: Cobranca) {
+  const titulo = opcao === "sinal" ? `Sinal da reserva ${numero}` : `Reserva ${numero} (${opcao === "total" ? "valor total" : "metade"})`;
   const site = enderecoDoSite();
   const volta = `${site}/pedido/${numero}`;
   const seguro = site.startsWith("https://");
@@ -39,10 +43,10 @@ export async function criarCobranca({ numero, nome, sinalCentavos, expiraEm }: C
       items: [
         {
           id: numero,
-          title: `Sinal da reserva ${numero}`,
-          description: "Sinal para reserva de Natal",
+          title: titulo,
+          description: "Reserva de Natal",
           quantity: 1,
-          unit_price: sinalCentavos / 100,
+          unit_price: valorCentavos / 100,
           currency_id: "BRL",
         },
       ],
@@ -62,9 +66,9 @@ export async function criarCobranca({ numero, nome, sinalCentavos, expiraEm }: C
       expiration_date_to: expiraEm,
       date_of_expiration: expiraEm,
       binary_mode: false,
-      metadata: { numero, sinal_centavos: sinalCentavos, campanha: "natal" },
+      metadata: { numero, opcao, valor_centavos: valorCentavos, campanha: "natal" },
     },
-    requestOptions: { idempotencyKey: `preferencia-${numero}-${expiraEm}` },
+    requestOptions: { idempotencyKey: `preferencia-${numero}-${opcao}-${expiraEm}` },
   });
 
   if (!preferencia.id || !preferencia.init_point) throw new Error("Mercado Pago não devolveu o link de pagamento");
@@ -89,9 +93,11 @@ export async function consultarPagamento(id: string): Promise<PagamentoMP> {
   };
 }
 
-// Pagamento aprovado e do valor certo
-export function pagamentoVale(p: PagamentoMP, numero: string) {
-  return p.status === "approved" && p.numero === numero && p.valorCentavos >= campanha.sinalCentavos;
+// Pagamento aprovado e do valor certo: pelo menos o sinal gravado no próprio pedido (varia com o total)
+export async function pagamentoVale(p: PagamentoMP, numero: string) {
+  if (p.status !== "approved" || p.numero !== numero) return false;
+  const { data } = await bancoDeDados().from("pedidos").select("sinal_centavos").eq("numero", numero).maybeSingle();
+  return data != null && p.valorCentavos >= data.sinal_centavos;
 }
 
 // Confere a assinatura que o Mercado Pago manda em cada aviso (x-signature).
@@ -121,4 +127,18 @@ export function assinaturaValida(cabecalhos: Headers, dataId: string | null) {
   const a = Buffer.from(esperado);
   const b = Buffer.from(partes.v1);
   return a.length === b.length && timingSafeEqual(a, b);
+}
+
+// Marca o pedido como pago (ou "estornar", se chegou tarde sem vaga) e guarda quanto foi pago de verdade
+export async function registrarPagamento(numero: string, pagamento: PagamentoMP) {
+  const banco = bancoDeDados();
+  const { data, error } = await banco.rpc("confirmar_pagamento", { p_numero: numero, p_pagamento_id: pagamento.id });
+  if (error) throw error;
+  const { error: e2 } = await banco
+    .from("pedidos")
+    .update({ pago_centavos: pagamento.valorCentavos })
+    .eq("numero", numero)
+    .eq("mp_pagamento_id", pagamento.id);
+  if (e2) throw e2;
+  return data as { ok: boolean; status?: string };
 }

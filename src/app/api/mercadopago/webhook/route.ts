@@ -1,5 +1,10 @@
-import { bancoDeDados } from "@/lib/supabase";
-import { assinaturaValida, consultarPagamento, pagamentoConfigurado, pagamentoVale } from "@/lib/mercadopago";
+import {
+  assinaturaValida,
+  consultarPagamento,
+  pagamentoConfigurado,
+  pagamentoVale,
+  registrarPagamento,
+} from "@/lib/mercadopago";
 
 // Aviso automático do Mercado Pago. Só confia no aviso depois de conferir a assinatura
 // e consultar o pagamento direto na API; o corpo do aviso sozinho não marca nada como pago.
@@ -23,15 +28,11 @@ export async function POST(request: Request) {
 
   try {
     const pagamento = await consultarPagamento(dataId);
-    if (!pagamento.numero || !pagamentoVale(pagamento, pagamento.numero)) {
+    if (!pagamento.numero || !(await pagamentoVale(pagamento, pagamento.numero))) {
       return new Response(null, { status: 200 });
     }
 
-    const { error } = await bancoDeDados().rpc("confirmar_pagamento", {
-      p_numero: pagamento.numero,
-      p_pagamento_id: pagamento.id,
-    });
-    if (error) throw error;
+    await registrarPagamento(pagamento.numero, pagamento);
     return new Response(null, { status: 200 });
   } catch (e) {
     // 500 faz o Mercado Pago tentar de novo mais tarde

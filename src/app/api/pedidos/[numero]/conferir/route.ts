@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { bancoDeDados } from "@/lib/supabase";
-import { consultarPagamento, pagamentoConfigurado, pagamentoVale } from "@/lib/mercadopago";
+import { consultarPagamento, pagamentoConfigurado, pagamentoVale, registrarPagamento } from "@/lib/mercadopago";
 
 const esquema = z.object({ pagamentoId: z.string().regex(/^\d{1,20}$/) });
 
@@ -14,15 +13,11 @@ export async function POST(request: Request, ctx: RouteContext<"/api/pedidos/[nu
 
   try {
     const pagamento = await consultarPagamento(corpo.data.pagamentoId);
-    if (!pagamentoVale(pagamento, numero)) {
+    if (!(await pagamentoVale(pagamento, numero))) {
       return Response.json({ status_mp: pagamento.status, confirmado: false });
     }
 
-    const { data, error } = await bancoDeDados().rpc("confirmar_pagamento", {
-      p_numero: numero,
-      p_pagamento_id: pagamento.id,
-    });
-    if (error) throw error;
+    const data = await registrarPagamento(numero, pagamento);
     return Response.json({ status_mp: pagamento.status, confirmado: data.ok === true, status: data.status });
   } catch (e) {
     console.error("conferir pagamento", e);

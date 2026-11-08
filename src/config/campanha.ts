@@ -26,8 +26,9 @@ export const grupos: Record<Grupo, { nome: string; plural: string }> = {
 export const campanha = {
   // Tempo que a vaga fica segura enquanto a cliente paga
   validadeMinutos: 15,
-  // Sinal fixo por pedido, sem devolução em caso de desistência (Luiz, 07/11/2026)
-  sinalCentavos: 7000,
+  // Sinal: 30% do pedido, nunca menos que R$ 70 (Luiz, 08/11/2026). Sem devolução em caso de desistência.
+  sinalMinimoCentavos: 7000,
+  sinalPercentual: 30,
   // Atendimento: (11) 95878-2711
   whatsapp: "5511958782711",
   enderecoRetirada: "Rua Francisco Lobo, 71, Parque São Rafael, São Paulo, SP, CEP 08311-140",
@@ -104,4 +105,38 @@ export const produtos: Produto[] = [
   },
 ];
 
+// Sinal de um pedido: o maior entre o mínimo e a porcentagem do total, arredondado para cima em reais inteiros.
+// Ex.: R$ 125 → R$ 70; R$ 275 → R$ 83 (30% = 82,50); R$ 400 → R$ 120.
+export function sinalDoPedido(totalCentavos: number) {
+  const percentual = Math.ceil((totalCentavos * campanha.sinalPercentual) / 100 / 100) * 100;
+  return Math.max(campanha.sinalMinimoCentavos, percentual);
+}
+
 export const grupoDoProduto = (produtoId: string) => produtos.find((p) => p.id === produtoId)?.grupo;
+
+// Quanto a cliente paga agora: só o sinal, metade ou tudo. Nunca menos que o sinal.
+// Se desistir, o sinal fica com a loja e o que passou dele é devolvido (Luiz, 08/11/2026).
+export type OpcaoPagamento = "sinal" | "metade" | "total";
+export const nomesOpcoes: Record<OpcaoPagamento, string> = {
+  sinal: "Só o sinal",
+  metade: "Metade",
+  total: "Tudo agora",
+};
+
+export function valorDaOpcao(opcao: OpcaoPagamento, totalCentavos: number) {
+  const sinal = sinalDoPedido(totalCentavos);
+  if (opcao === "total") return Math.max(sinal, totalCentavos);
+  if (opcao === "metade") return Math.max(sinal, Math.ceil(totalCentavos / 2 / 100) * 100);
+  return sinal;
+}
+
+// Opções que fazem sentido para o pedido: "Metade" some se não passar do sinal (ex.: uma torta de R$ 125)
+export function opcoesDePagamento(totalCentavos: number) {
+  const sinal = sinalDoPedido(totalCentavos);
+  return (["sinal", "metade", "total"] as const)
+    .map((opcao) => ({ opcao, centavos: valorDaOpcao(opcao, totalCentavos) }))
+    .filter(
+      ({ opcao, centavos }) =>
+        opcao === "sinal" || (centavos > sinal && (opcao === "total" || centavos < totalCentavos)),
+    );
+}
