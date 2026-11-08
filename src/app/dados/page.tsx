@@ -101,6 +101,15 @@ export default function Dados() {
   }));
   const cabe = (restantes: Record<Grupo, number>) => noCarrinho.every(({ grupo, qtd }) => qtd <= restantes[grupo]);
   const nenhumaCabe = !!abertas && !!modalidade && datas.every((d) => !cabe(d.restantes));
+  // Diz por que a data não serve, "(esgotada)" ou "(cabe até 2 panetones)", para a cliente saber o que mudar
+  const motivo = (restantes: Record<Grupo, number>) => {
+    const estoura = noCarrinho.filter(({ grupo, qtd }) => qtd > restantes[grupo]);
+    const parcial = estoura.find(({ grupo }) => restantes[grupo] > 0);
+    if (!parcial) return " (esgotada)";
+    const n = restantes[parcial.grupo];
+    const { nome, plural } = grupos[parcial.grupo];
+    return n === 1 ? ` (cabe só 1 ${nome.toLowerCase()})` : ` (cabe até ${n} ${plural})`;
+  };
 
   useEffect(() => {
     const digitos = somenteDigitos(cep);
@@ -230,7 +239,7 @@ export default function Dados() {
                 {datas.map((d) => (
                   <option key={d.data} value={d.data} disabled={!cabe(d.restantes)}>
                     {dataCurta(d.data)}
-                    {cabe(d.restantes) ? "" : " (indisponível)"}
+                    {cabe(d.restantes) ? "" : motivo(d.restantes)}
                   </option>
                 ))}
               </select>

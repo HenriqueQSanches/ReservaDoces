@@ -323,7 +323,7 @@ export default function Painel() {
                           mudarStatus(
                             p.numero,
                             "cancelado",
-                            `Cancelar o pedido ${p.numero}? A vaga volta a ficar disponível. Se ela pagou o sinal, devolva pelo Mercado Pago.`,
+                            `Cancelar o pedido ${p.numero}? A vaga volta a ficar disponível. O sinal não volta sozinho: se for o caso de devolver, é pelo Mercado Pago.`,
                           )
                         }
                         className={`${classeToque} rounded-lg border border-neutral-300 px-3 py-2 text-sm text-red-700 disabled:opacity-50`}

@@ -185,7 +185,7 @@ export default function Resumo() {
         <h2 className="font-semibold text-neutral-900">Formas de pagamento</h2>
         <p>Pix, cartão de crédito ou débito, na página segura do Mercado Pago.</p>
         <p>
-          Se precisar desistir, devolvemos o sinal. É só chamar a gente no WhatsApp.
+          O sinal garante a sua reserva e não é devolvido em caso de desistência.
         </p>
       </section>
     </Tela>

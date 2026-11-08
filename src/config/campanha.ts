@@ -24,7 +24,8 @@ export const grupos: Record<Grupo, { nome: string; plural: string }> = {
 export const campanha = {
   // Tempo que a vaga fica segura enquanto a cliente paga
   validadeMinutos: 15,
-  sinalCentavos: 5000,
+  // Sinal fixo por pedido, sem devolução em caso de desistência (Luiz, 07/11/2026)
+  sinalCentavos: 7000,
   // Atendimento: (11) 95878-2711
   whatsapp: "5511958782711",
   enderecoRetirada: "Rua Francisco Lobo, 71, Parque São Rafael, São Paulo, SP, CEP 08311-140",
