@@ -9,6 +9,8 @@ export type Produto = {
   grupo: Grupo;
   nome: string;
   descricao: string;
+  // Trechos da descrição com um leve destaque na vitrine (precisam aparecer iguais na descrição)
+  destaques?: string[];
   peso?: string;
   precoCentavos: number;
   imagens: string[];
@@ -53,6 +55,7 @@ export const produtos: Produto[] = [
     nome: "Cacau & Castanhas",
     descricao:
       "Panetone de fermentação natural recheado com Brigadeiro de Cacau 70%, Castanhas de Caju caramelizadas e toques de Flor de Sal.",
+    destaques: ["fermentação natural", "Brigadeiro de Cacau 70%", "Castanhas de Caju caramelizadas", "Flor de Sal"],
     peso: "Aprox. 985g",
     precoCentavos: 15000,
     imagens: ["/produtos/exemplo-1.svg", "/produtos/exemplo-2.svg", "/produtos/exemplo-3.svg"],
@@ -62,6 +65,7 @@ export const produtos: Produto[] = [
     grupo: "panetone",
     nome: "Frutas Vermelhas",
     descricao: "Panetone de fermentação natural recheado com Brigadeiro de Chocolate Branco e Geleia de Frutas Vermelhas.",
+    destaques: ["fermentação natural", "Brigadeiro de Chocolate Branco", "Geleia de Frutas Vermelhas"],
     peso: "Aprox. 985g",
     precoCentavos: 15000,
     imagens: ["/produtos/exemplo-2.svg", "/produtos/exemplo-3.svg", "/produtos/exemplo-1.svg"],
@@ -71,6 +75,7 @@ export const produtos: Produto[] = [
     grupo: "panetone",
     nome: "Pistache",
     descricao: "Panetone de fermentação natural recheado com Brigadeiro de Pistache 100% puro, feito exclusivamente da noz.",
+    destaques: ["fermentação natural", "Brigadeiro de Pistache 100% puro"],
     peso: "Aprox. 985g",
     precoCentavos: 15000,
     imagens: ["/produtos/exemplo-3.svg", "/produtos/exemplo-1.svg", "/produtos/exemplo-2.svg"],
@@ -81,6 +86,7 @@ export const produtos: Produto[] = [
     nome: "Torta Cookie Tradicional",
     descricao:
       "Torta Cookie de massa tradicional recheada com Brigadeiro Tradicional e finalizada com gotas de Chocolate meio-amargo.",
+    destaques: ["Brigadeiro Tradicional", "Chocolate meio-amargo"],
     peso: "Aprox. 1,1kg",
     precoCentavos: 12500,
     imagens: ["/produtos/exemplo-1.svg", "/produtos/exemplo-2.svg", "/produtos/exemplo-3.svg"],
@@ -91,6 +97,7 @@ export const produtos: Produto[] = [
     nome: "Torta Cookie Red-Velvet",
     descricao:
       "Torta Cookie de massa red-velvet recheada com Brigadeiro de Ninho, Geleia de Morango artesanal e finalizada com gotas de Chocolate branco.",
+    destaques: ["massa red-velvet", "Brigadeiro de Ninho", "Geleia de Morango artesanal", "Chocolate branco"],
     peso: "Aprox. 1,1kg",
     precoCentavos: 12500,
     imagens: ["/produtos/exemplo-2.svg", "/produtos/exemplo-3.svg", "/produtos/exemplo-1.svg"],

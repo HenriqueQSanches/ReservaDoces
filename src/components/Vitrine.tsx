@@ -8,14 +8,58 @@ import { useReserva } from "@/lib/reserva";
 import { useDisponibilidade } from "@/lib/disponibilidade";
 import { dataCurta, linkWhatsapp, moeda } from "@/lib/formatar";
 
-// "12/12 e 19/12" para a entrega; "de 16/12 a 23/12" para a retirada
-const diaMes = (iso: string) => dataCurta(iso).split(", ")[1];
-const listar = (datas: string[]) => datas.map(diaMes).join(", ").replace(/, ([^,]+)$/, " e $1");
-const entregas = listar(campanha.datas.entrega);
-const retiradas = (() => {
-  const d = campanha.datas.retirada;
-  return d.length > 2 ? `de ${diaMes(d[0])} a ${diaMes(d[d.length - 1])}` : listar(d);
-})();
+// Datas embaixo do logo: cada modalidade numa linha de "bolinhas" que ocupa a largura toda,
+// para a entrega (2 dias) e a retirada (7 dias) ficarem do mesmo tamanho. Dia sem retirada, como o 19, não aparece.
+// Sai sozinho das datas e horários do campanha.ts.
+const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+const horarios = campanha.horariosRetirada;
+const horarioRetirada = `das ${horarios[0]}h às ${horarios[horarios.length - 1]}h`;
+
+function Modo({ titulo, detalhe, datas }: { titulo: string; detalhe?: string; datas: string[] }) {
+  const ordenadas = [...datas].sort();
+  // Mês no título quando todas as datas caem no mesmo mês; senão a bolinha leva dd/mm
+  const mes = new Set(ordenadas.map((d) => d.slice(0, 7))).size === 1 ? MESES[Number(ordenadas[0].slice(5, 7)) - 1] : null;
+  return (
+    <div>
+      <p className="text-center text-sm">
+        <span className="font-semibold text-neutral-900">{titulo}</span>
+        <span className="text-neutral-500"> · {[mes, detalhe].filter(Boolean).join(", ")}</span>
+      </p>
+      <ul className="mt-2 flex gap-1.5">
+        {ordenadas.map((d) => {
+          const [semana, diaMes] = dataCurta(d).split(", ");
+          return (
+            <li
+              key={d}
+              className="flex h-12 min-w-0 flex-1 flex-col items-center justify-center rounded-xl bg-white ring-1 ring-neutral-200"
+            >
+              <span className="text-[11px] leading-none text-neutral-500">{semana}</span>
+              <span className="mt-1 text-sm leading-none font-semibold text-neutral-900">
+                {mes ? String(Number(d.slice(8, 10))) : diaMes}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+// Escurece um pouco os trechos de destaque da descrição (ingredientes), sem negrito pesado
+function realcar(texto: string, destaques: string[] = []) {
+  if (destaques.length === 0) return texto;
+  const escapar = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const partes = texto.split(new RegExp(`(${destaques.map(escapar).join("|")})`));
+  return partes.map((parte, i) =>
+    destaques.includes(parte) ? (
+      <span key={i} className="font-medium text-neutral-800">
+        {parte}
+      </span>
+    ) : (
+      parte
+    ),
+  );
+}
 
 // Vibração curta de confirmação. Só o Android permite pelo navegador; no iPhone não faz nada.
 function vibrar() {
@@ -68,9 +112,10 @@ export function Vitrine({ esgotadoForcado = false }: { esgotadoForcado?: boolean
         )
       }
     >
-      <p className="mb-10 text-center text-sm text-neutral-500">
-        Entregas em {entregas}. Retiradas {retiradas}.
-      </p>
+      <div className="mx-auto mb-10 max-w-md space-y-4 rounded-2xl bg-neutral-50 p-4">
+        <Modo titulo="Entrega" datas={campanha.datas.entrega} />
+        <Modo titulo="Retirada" detalhe={horarioRetirada} datas={campanha.datas.retirada} />
+      </div>
 
       <ul className="grid gap-14 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
         {produtos.map((produto) => {
@@ -81,22 +126,22 @@ export function Vitrine({ esgotadoForcado = false }: { esgotadoForcado?: boolean
             <li key={produto.id} className={produtoEsgotado ? "opacity-60" : undefined}>
               <CarrosselProduto imagens={produto.imagens} nome={produto.nome} />
 
-              <div className="mt-4 flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">
-                    {grupos[produto.grupo].nome}
-                  </p>
-                  <h2 className="text-xl font-semibold tracking-tight">{produto.nome}</h2>
-                  <p className="mt-1 text-sm text-neutral-500">{produto.descricao}</p>
-                  {produto.peso && <p className="mt-1 text-sm text-neutral-500">{produto.peso}</p>}
-                </div>
-                <p className="shrink-0 text-lg font-bold">{moeda(produto.precoCentavos)}</p>
-              </div>
+              <div className="mx-auto mt-4 max-w-sm text-center">
+                <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">
+                  {grupos[produto.grupo].nome}
+                </p>
+                <h2 className="mt-0.5 text-xl font-semibold tracking-tight">{produto.nome}</h2>
+                <p className="mt-1 text-lg font-bold">{moeda(produto.precoCentavos)}</p>
+                <p className="mt-2 text-sm leading-relaxed text-pretty text-neutral-500">
+                  {realcar(produto.descricao, produto.destaques)}
+                </p>
+                {produto.peso && <p className="mt-1.5 text-xs text-neutral-400">{produto.peso}</p>}
 
-              {produtoEsgotado && <p className="mt-3 text-sm font-semibold">Esgotado</p>}
-              {!produtoEsgotado && noLimite && qtd > 0 && (
-                <p className="mt-3 text-sm text-neutral-500">Você chegou ao máximo disponível deste produto.</p>
-              )}
+                {produtoEsgotado && <p className="mt-3 text-sm font-semibold">Esgotado</p>}
+                {!produtoEsgotado && noLimite && qtd > 0 && (
+                  <p className="mt-3 text-sm text-neutral-500">Você chegou ao máximo disponível deste produto.</p>
+                )}
+              </div>
 
               <div className="mt-4 flex items-center gap-3">
                 {qtd > 0 && (
