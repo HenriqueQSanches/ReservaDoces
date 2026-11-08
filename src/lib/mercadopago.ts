@@ -142,3 +142,20 @@ export async function registrarPagamento(numero: string, pagamento: PagamentoMP)
   if (e2) throw e2;
   return data as { ok: boolean; status?: string };
 }
+
+// Rede de segurança: procura no Mercado Pago os pagamentos de um pedido pelo número (external_reference).
+// Serve quando o aviso automático não chegou e a cliente não voltou ao site. Devolve o aprovado, se houver,
+// senão o mais recente, para o painel mostrar o que o Mercado Pago tem.
+export async function buscarPagamentoDoPedido(numero: string): Promise<PagamentoMP | null> {
+  const busca = await new Payment(cliente()).search({
+    options: { external_reference: numero, sort: "date_created", criteria: "desc" },
+  });
+  const pagamentos: PagamentoMP[] = (busca.results ?? []).map((p) => ({
+    id: String(p.id),
+    status: p.status ?? "desconhecido",
+    numero: p.external_reference ?? null,
+    valorCentavos: Math.round((p.transaction_amount ?? 0) * 100),
+  }));
+  const doPedido = pagamentos.filter((p) => p.numero === numero);
+  return doPedido.find((p) => p.status === "approved") ?? doPedido[0] ?? null;
+}

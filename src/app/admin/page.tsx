@@ -9,6 +9,7 @@ import { classeToque } from "@/components/Tela";
 import { dataCurta, linkWhatsapp, moeda, somenteDigitos } from "@/lib/formatar";
 import type { PedidoAdmin } from "@/lib/pedidosAdmin";
 import { devolverSeDesistir, faltaDoPedido, pagoDoPedido } from "@/lib/valores";
+import type { RespostaConferir } from "@/app/api/admin/pedidos/[numero]/conferir/route";
 import type { SituacaoData } from "@/lib/datas";
 import type { LimiteComUso } from "@/lib/vagas";
 import { PainelLimites, type MudancasDias } from "./PainelLimites";
@@ -84,6 +85,39 @@ export default function Painel() {
       body: JSON.stringify({ status }),
     });
     if (!r.ok) window.alert("Não foi possível mudar o pedido. Atualize a página e tente de novo.");
+    await carregar();
+    setOcupado(null);
+  }
+
+  // Procura o pagamento no Mercado Pago pelo número do pedido e corrige aqui se estiver aprovado lá
+  async function conferirNoMercadoPago(numero: string) {
+    setOcupado(numero);
+    let mensagem = "Não foi possível falar com o Mercado Pago agora. Tente de novo em instantes.";
+    try {
+      const r = await fetch(`/api/admin/pedidos/${numero}/conferir`, { method: "POST" });
+      if (r.ok) {
+        const d: RespostaConferir = await r.json();
+        const situacoesMp: Record<string, string> = {
+          pending: "aguardando pagamento",
+          in_process: "em análise",
+          rejected: "recusado",
+          cancelled: "cancelado",
+          refunded: "devolvido",
+          charged_back: "contestado",
+        };
+        mensagem =
+          d.resultado === "confirmado"
+            ? d.status === "estornar"
+              ? `Pagamento encontrado (${moeda(d.valorCentavos)}), mas chegou depois do prazo e a data não tem mais vaga. O pedido ${numero} ficou como "Devolver sinal".`
+              : `Pagamento encontrado no Mercado Pago (${moeda(d.valorCentavos)}). O pedido ${numero} foi marcado como pago.`
+            : d.resultado === "ja_registrado"
+              ? `O pedido ${numero} já está registrado como pago.`
+              : d.resultado === "sem_pagamento"
+                ? `O Mercado Pago não tem nenhum pagamento do pedido ${numero}. A cliente não chegou a pagar.`
+                : `O Mercado Pago tem uma tentativa de pagamento do pedido ${numero}, mas ela não foi aprovada (${situacoesMp[d.statusMp] ?? d.statusMp}).`;
+      }
+    } catch {}
+    window.alert(mensagem);
     await carregar();
     setOcupado(null);
   }
@@ -315,6 +349,16 @@ export default function Painel() {
                         className={`${classeToque} rounded-lg border border-neutral-300 px-3 py-2 text-sm disabled:opacity-50`}
                       >
                         Desfazer entrega
+                      </button>
+                    )}
+                    {(p.status === "pendente" || p.status === "expirado") && (
+                      <button
+                        type="button"
+                        disabled={ocupado === p.numero}
+                        onClick={() => conferirNoMercadoPago(p.numero)}
+                        className={`${classeToque} rounded-lg border border-neutral-300 px-3 py-2 text-sm disabled:opacity-50`}
+                      >
+                        {ocupado === p.numero ? "Conferindo..." : "Conferir no Mercado Pago"}
                       </button>
                     )}
                     {(p.status === "pago" || p.status === "estornar" || p.status === "pendente") && (
