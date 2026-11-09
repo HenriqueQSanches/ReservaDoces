@@ -220,7 +220,7 @@ export default function Resumo() {
 
       <section className="mt-6 space-y-2 px-1 text-sm text-neutral-600">
         <h2 className="font-semibold text-neutral-900">Formas de pagamento</h2>
-        <p>Pix, cartão de crédito ou débito, na página segura do Mercado Pago.</p>
+        <p>Pix ou cartão de crédito, na página segura do Mercado Pago.</p>
         <p>
           O sinal garante a sua reserva. Se precisar desistir, o sinal não é devolvido; o que você pagou além dele, a
           gente devolve.

@@ -31,7 +31,8 @@ type Cobranca = {
 
 // Cria a cobrança no Mercado Pago (Checkout Pro) e devolve o link de pagamento.
 // O valor é o da opção escolhida (sinal, metade ou tudo), calculado no servidor.
-// Pix, crédito e débito; sem boleto (demora dias) e sem parcelamento.
+// Pix e crédito; sem boleto (demora dias) e sem parcelamento. O débito fica liberado, mas a conta do Luiz
+// só aceita o débito virtual Elo da Caixa (Visa e Master no débito não estão habilitados, 09/11/2026).
 export async function criarCobranca({ numero, nome, valorCentavos, opcao, expiraEm }: Cobranca) {
   const titulo = opcao === "sinal" ? `Sinal da reserva ${numero}` : `Reserva ${numero} (${opcao === "total" ? "valor total" : "metade"})`;
   const site = enderecoDoSite();
