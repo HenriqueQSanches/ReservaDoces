@@ -178,7 +178,7 @@ export default function Dados() {
           >
             <option value="">Selecione</option>
             <option value="retirada">Prefiro ir retirar!</option>
-            <option value="entrega">Quero receber em casa!</option>
+            <option value="entrega">Quero receber em casa! (frete grátis)</option>
           </select>
         </Campo>
 
@@ -190,6 +190,10 @@ export default function Dados() {
 
         {modalidade === "entrega" && (
           <fieldset className="animate-entrar space-y-5">
+            {/* Pedido do Luiz (10/11/2026): deixar claro que receber em casa não custa nada a mais */}
+            <p className="rounded-xl bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
+              <span className="font-semibold text-neutral-900">Frete grátis:</span> a entrega é por nossa conta.
+            </p>
             <Campo rotulo="CEP" erro={errors.cep?.message}>
               <input
                 {...register("cep", { onChange: (e) => setValue("cep", mascaraCep(e.target.value)) })}

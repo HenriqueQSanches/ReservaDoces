@@ -123,20 +123,27 @@ export const nomesOpcoes: Record<OpcaoPagamento, string> = {
   total: "Tudo agora",
 };
 
-export function valorDaOpcao(opcao: OpcaoPagamento, totalCentavos: number) {
+// Cupom (Luiz, 10/11/2026): o sinal continua sobre o preço cheio; o desconto sai do valor final.
+// Ex.: R$ 400 com 15% → sinal R$ 120, valor final R$ 340, restante R$ 220.
+export const normalizarCupom = (texto: string) => texto.trim().toUpperCase().replace(/s+/g, "");
+export const descontoDoCupom = (totalCentavos: number, percentual: number) =>
+  Math.round((totalCentavos * percentual) / 100);
+
+export function valorDaOpcao(opcao: OpcaoPagamento, totalCentavos: number, descontoCentavos = 0) {
   const sinal = sinalDoPedido(totalCentavos);
-  if (opcao === "total") return Math.max(sinal, totalCentavos);
-  if (opcao === "metade") return Math.max(sinal, Math.ceil(totalCentavos / 2 / 100) * 100);
+  const final = Math.max(0, totalCentavos - descontoCentavos);
+  if (opcao === "total") return Math.max(sinal, final);
+  if (opcao === "metade") return Math.max(sinal, Math.ceil(final / 2 / 100) * 100);
   return sinal;
 }
 
 // Opções que fazem sentido para o pedido: "Metade" some se não passar do sinal (ex.: uma torta de R$ 125)
-export function opcoesDePagamento(totalCentavos: number) {
+export function opcoesDePagamento(totalCentavos: number, descontoCentavos = 0) {
   const sinal = sinalDoPedido(totalCentavos);
+  const final = Math.max(0, totalCentavos - descontoCentavos);
   return (["sinal", "metade", "total"] as const)
-    .map((opcao) => ({ opcao, centavos: valorDaOpcao(opcao, totalCentavos) }))
+    .map((opcao) => ({ opcao, centavos: valorDaOpcao(opcao, totalCentavos, descontoCentavos) }))
     .filter(
-      ({ opcao, centavos }) =>
-        opcao === "sinal" || (centavos > sinal && (opcao === "total" || centavos < totalCentavos)),
+      ({ opcao, centavos }) => opcao === "sinal" || (centavos > sinal && (opcao === "total" || centavos < final)),
     );
 }

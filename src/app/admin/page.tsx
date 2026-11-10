@@ -13,6 +13,8 @@ import type { RespostaConferir } from "@/app/api/admin/pedidos/[numero]/conferir
 import type { SituacaoData } from "@/lib/datas";
 import type { LimiteComUso } from "@/lib/vagas";
 import { PainelLimites, type MudancasDias } from "./PainelLimites";
+import { PainelCupons } from "./PainelCupons";
+import type { CupomAdmin } from "@/app/api/admin/cupons/route";
 
 const rotulos: Record<string, { texto: string; cor: string }> = {
   pago: { texto: "Pago", cor: "bg-green-100 text-green-800" },
@@ -29,18 +31,22 @@ const filtros = [
   { id: "estornar", texto: "Devolver sinal" },
   { id: "pendente", texto: "Aguardando" },
   { id: "cancelado", texto: "Cancelados" },
+  // Pedidos pagos (ou a devolver) que usaram cupom: o Luiz confere a elegibilidade na cobrança final
+  { id: "cupom", texto: "Com cupom" },
   { id: "todos", texto: "Todos" },
 ] as const;
 
 const nomeProduto = (id: string) => produtos.find((p) => p.id === id)?.nome ?? id;
 const grupoDoItem = (i: { produto_id: string; grupo: string | null }) => i.grupo ?? grupoDoProduto(i.produto_id);
 const ativo = (s: string) => s === "pago" || s === "entregue";
+const temCupomValendo = (s: string) => s === "pago" || s === "entregue" || s === "estornar";
 
 export default function Painel() {
   const router = useRouter();
   const [pedidos, setPedidos] = useState<PedidoAdmin[] | null>(null);
   const [limites, setLimites] = useState<LimiteComUso[] | null>(null);
-  const [aba, setAba] = useState<"pedidos" | "padaria" | "datas" | "limites">("pedidos");
+  const [aba, setAba] = useState<"pedidos" | "padaria" | "datas" | "limites" | "cupons">("pedidos");
+  const [cupons, setCupons] = useState<CupomAdmin[] | null>(null);
   const [datas, setDatas] = useState<{ datas: SituacaoData[]; antecedenciaDias: number } | null>(null);
   const [filtro, setFiltro] = useState<(typeof filtros)[number]["id"]>("pago");
   const [busca, setBusca] = useState("");
@@ -57,6 +63,9 @@ export default function Painel() {
     fetch("/api/admin/datas", { cache: "no-store" })
       .then((d) => (d.ok ? d.json() : null))
       .then((d) => d && setDatas(d));
+    fetch("/api/admin/cupons", { cache: "no-store" })
+      .then((d) => (d.ok ? d.json() : null))
+      .then((d) => d && setCupons(d.cupons));
   }, [router]);
 
   async function mudarData(data: string, acao: "abrir" | "fechar" | "automatico") {
@@ -132,6 +141,7 @@ export default function Painel() {
     return (pedidos ?? []).filter((p) => {
       const passaFiltro =
         filtro === "todos" ||
+        (filtro === "cupom" && !!p.cupom_codigo && temCupomValendo(p.status)) ||
         p.status === filtro ||
         (filtro === "cancelado" && p.status === "expirado");
       const passaBusca =
@@ -176,6 +186,33 @@ export default function Painel() {
       .filter((i) => grupoDoItem(i) === g)
       .reduce((s, i) => s + i.quantidade, 0);
 
+  // Devolve a mensagem de erro, ou null se deu certo
+  async function criarCupom(codigo: string, percentual: number) {
+    setOcupado("novo-cupom");
+    const r = await fetch("/api/admin/cupons", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ codigo, percentual }),
+    });
+    await carregar();
+    setOcupado(null);
+    if (r.ok) return null;
+    return r.status === 409 ? "Já existe um cupom com esse código." : "Não foi possível criar o cupom. Tente de novo.";
+  }
+
+  async function mudarCupom(codigo: string, dados: { ativo?: boolean; percentual?: number }) {
+    if (dados.ativo === false && !window.confirm(`Desligar o cupom ${codigo}? Quem ainda não pagou não consegue mais usar.`)) return;
+    setOcupado(codigo);
+    const r = await fetch(`/api/admin/cupons/${codigo}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(dados),
+    });
+    if (!r.ok) window.alert("Não foi possível mudar o cupom. Atualize a página e tente de novo.");
+    await carregar();
+    setOcupado(null);
+  }
+
   async function salvarLimite(id: string, limiteDia: number, limiteTotal: number | null, dias: MudancasDias) {
     setOcupado(id);
     const r = await fetch(`/api/admin/limites/${id}`, {
@@ -190,7 +227,12 @@ export default function Painel() {
   }
 
   const contagem = (s: string) =>
-    (pedidos ?? []).filter((p) => p.status === s || (s === "cancelado" && p.status === "expirado")).length;
+    (pedidos ?? []).filter(
+      (p) =>
+        p.status === s ||
+        (s === "cancelado" && p.status === "expirado") ||
+        (s === "cupom" && !!p.cupom_codigo && temCupomValendo(p.status)),
+    ).length;
 
   if (pedidos === null) {
     return (
@@ -234,6 +276,7 @@ export default function Painel() {
             ["padaria", "Padaria"],
             ["datas", "Datas"],
             ["limites", "Limites"],
+            ["cupons", "Cupons"],
           ] as const
         ).map(([a, texto]) => (
           <button
@@ -293,6 +336,11 @@ export default function Painel() {
                     <div>
                       <p className="font-bold">{p.numero}</p>
                       <p className="text-sm">{p.nome}</p>
+                      {p.cupom_codigo && (
+                        <p className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
+                          Cupom {p.cupom_codigo} · −{moeda(p.desconto_centavos)}
+                        </p>
+                      )}
                     </div>
                     <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${rotulo.cor}`}>
                       {rotulo.texto}
@@ -319,7 +367,9 @@ export default function Painel() {
                   </ul>
 
                   <p className="mt-2 text-sm text-neutral-600">
-                    Total {moeda(p.total_centavos)} · {p.pago_centavos != null ? "pago" : "sinal"} {moeda(pagoDoPedido(p))} · falta {moeda(restante)}
+                    Total {moeda(p.total_centavos)}
+                    {p.desconto_centavos > 0 ? ` · cupom −${moeda(p.desconto_centavos)}` : ""} ·{" "}
+                    {p.pago_centavos != null ? "pago" : "sinal"} {moeda(pagoDoPedido(p))} · falta {moeda(restante)}
                   </p>
 
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -453,6 +503,10 @@ export default function Painel() {
             );
           })}
         </section>
+      )}
+
+      {aba === "cupons" && cupons && (
+        <PainelCupons cupons={cupons} pedidos={pedidos} ocupado={ocupado} criar={criarCupom} mudar={mudarCupom} />
       )}
 
       {aba === "limites" && limites && (

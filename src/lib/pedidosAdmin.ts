@@ -20,6 +20,9 @@ export type PedidoAdmin = {
   sinal_centavos: number;
   // Quanto foi pago de verdade (sinal, metade ou tudo); null nos pedidos sem pagamento ou anteriores a 08/11
   pago_centavos: number | null;
+  // Cupom usado no pagamento e o desconto em centavos (0 sem cupom)
+  cupom_codigo: string | null;
+  desconto_centavos: number;
   expira_em: string;
   pago_em: string | null;
   criado_em: string;
@@ -31,7 +34,7 @@ export async function listarPedidos() {
   const { data, error } = await bancoDeDados()
     .from("pedidos")
     .select(
-      "numero, status, nome, whatsapp, modalidade, data_recebimento, hora_retirada, cep, rua, numero_endereco, complemento, bairro, cidade, unidades, total_centavos, sinal_centavos, pago_centavos, expira_em, pago_em, criado_em, mp_pagamento_id, itens_pedido(produto_id, grupo, quantidade, preco_centavos)",
+      "numero, status, nome, whatsapp, modalidade, data_recebimento, hora_retirada, cep, rua, numero_endereco, complemento, bairro, cidade, unidades, total_centavos, sinal_centavos, pago_centavos, cupom_codigo, desconto_centavos, expira_em, pago_em, criado_em, mp_pagamento_id, itens_pedido(produto_id, grupo, quantidade, preco_centavos)",
     )
     .order("criado_em", { ascending: false })
     .limit(1000);

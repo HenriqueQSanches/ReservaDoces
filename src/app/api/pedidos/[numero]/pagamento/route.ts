@@ -1,21 +1,26 @@
 import { z } from "zod";
-import { valorDaOpcao } from "@/config/campanha";
+import { descontoDoCupom, valorDaOpcao } from "@/config/campanha";
+import { buscarCupomAtivo } from "@/lib/cupons";
 import { bancoDeDados } from "@/lib/supabase";
 import { criarCobranca, pagamentoConfigurado } from "@/lib/mercadopago";
 
 // A cliente escolhe quanto pagar agora; o valor sai do total gravado no pedido, nunca do navegador
-const esquema = z.object({ opcao: z.enum(["sinal", "metade", "total"]).default("sinal") });
+// O cupom é aplicado aqui, no momento do pagamento: vale também para um pedido pendente reaproveitado
+const esquema = z.object({
+  opcao: z.enum(["sinal", "metade", "total"]).default("sinal"),
+  cupom: z.string().max(40).nullish(),
+});
 
 export type RespostaPagamento =
   | { ok: true; url: string }
-  | { ok: false; motivo: "nao_encontrado" | "expirado" | "ja_pago" | "erro" };
+  | { ok: false; motivo: "nao_encontrado" | "expirado" | "ja_pago" | "cupom_invalido" | "erro" };
 
 // Gera o link de pagamento (sinal, metade ou tudo) para um pedido pendente e manda a cliente para o Mercado Pago.
 export async function POST(request: Request, ctx: RouteContext<"/api/pedidos/[numero]/pagamento">) {
   const { numero } = await ctx.params;
   const corpo = esquema.safeParse(await request.json().catch(() => ({})));
   if (!corpo.success) return resposta({ ok: false, motivo: "erro" }, 400);
-  const { opcao } = corpo.data;
+  const { opcao, cupom: textoCupom } = corpo.data;
   const banco = bancoDeDados();
 
   const { data: pedido, error } = await banco
@@ -33,7 +38,28 @@ export async function POST(request: Request, ctx: RouteContext<"/api/pedidos/[nu
   if (pedido.status !== "pendente" || new Date(pedido.expira_em) < new Date())
     return resposta({ ok: false, motivo: "expirado" }, 409);
 
-  const valorCentavos = Math.max(pedido.sinal_centavos, valorDaOpcao(opcao, pedido.total_centavos));
+  // Cupom: confere se está ativo e grava no pedido (ou tira, se a cliente removeu)
+  let cupom: { codigo: string; percentual: number } | null = null;
+  try {
+    if (textoCupom) {
+      cupom = await buscarCupomAtivo(textoCupom);
+      if (!cupom) return resposta({ ok: false, motivo: "cupom_invalido" }, 400);
+    }
+  } catch (e) {
+    console.error("pagamento: conferir cupom", e);
+    return resposta({ ok: false, motivo: "erro" }, 500);
+  }
+  const descontoCentavos = cupom ? descontoDoCupom(pedido.total_centavos, cupom.percentual) : 0;
+  const { error: erroCupom } = await banco
+    .from("pedidos")
+    .update({ cupom_codigo: cupom?.codigo ?? null, desconto_centavos: descontoCentavos })
+    .eq("numero", numero);
+  if (erroCupom) {
+    console.error("pagamento: gravar cupom", erroCupom);
+    return resposta({ ok: false, motivo: "erro" }, 500);
+  }
+
+  const valorCentavos = Math.max(pedido.sinal_centavos, valorDaOpcao(opcao, pedido.total_centavos, descontoCentavos));
 
   // Sem Mercado Pago configurado, só no desenvolvimento: confirma na hora para testar as telas
   if (!pagamentoConfigurado()) {

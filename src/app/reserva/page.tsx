@@ -4,12 +4,22 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { campanha, grupos, nomesOpcoes, opcoesDePagamento, produtos, type OpcaoPagamento } from "@/config/campanha";
+import {
+  campanha,
+  descontoDoCupom,
+  grupos,
+  nomesOpcoes,
+  normalizarCupom,
+  opcoesDePagamento,
+  produtos,
+  type OpcaoPagamento,
+} from "@/config/campanha";
 import { Tela, classeBotaoAcao, classeToque } from "@/components/Tela";
 import { useReserva } from "@/lib/reserva";
 import { dataCurta, moeda } from "@/lib/formatar";
 import type { RespostaCriarPedido } from "@/app/api/pedidos/route";
 import type { RespostaPagamento } from "@/app/api/pedidos/[numero]/pagamento/route";
+import type { RespostaCupom } from "@/app/api/cupons/route";
 
 export default function Resumo() {
   const router = useRouter();
@@ -17,6 +27,11 @@ export default function Resumo() {
   const [enviando, setEnviando] = useState(false);
   const [opcao, setOpcao] = useState<OpcaoPagamento>("sinal");
   const [aviso, setAviso] = useState<{ texto: string; link?: string; rotulo?: string } | null>(null);
+  // Cupom de desconto: conferido no servidor ao aplicar e de novo na hora de gerar o pagamento
+  const [textoCupom, setTextoCupom] = useState("");
+  const [cupom, setCupom] = useState<{ codigo: string; percentual: number } | null>(null);
+  const [conferindoCupom, setConferindoCupom] = useState(false);
+  const [erroCupom, setErroCupom] = useState<string | null>(null);
 
   useEffect(() => {
     if (!carregado) return;
@@ -29,9 +44,39 @@ export default function Resumo() {
   const escolhidos = produtos.filter((p) => itens[p.id]);
   const retirada = dados.modalidade === "retirada";
   // Só o sinal, metade ou tudo. Se a opção escolhida sumiu (carrinho mudou), volta para o sinal.
-  const opcoes = opcoesDePagamento(totalCentavos);
+  // O sinal fica sobre o preço cheio; o desconto do cupom sai do valor final
+  const descontoCentavos = cupom ? descontoDoCupom(totalCentavos, cupom.percentual) : 0;
+  const finalCentavos = totalCentavos - descontoCentavos;
+  const opcoes = opcoesDePagamento(totalCentavos, descontoCentavos);
   const escolhida = opcoes.find((o) => o.opcao === opcao) ?? opcoes[0];
-  const restanteCentavos = Math.max(0, totalCentavos - escolhida.centavos);
+  const restanteCentavos = Math.max(0, finalCentavos - escolhida.centavos);
+
+  async function aplicarCupom(e: React.FormEvent) {
+    e.preventDefault();
+    const codigo = normalizarCupom(textoCupom);
+    if (!codigo) return;
+    setConferindoCupom(true);
+    setErroCupom(null);
+    try {
+      const r = await fetch("/api/cupons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codigo }),
+      });
+      const resposta: RespostaCupom = await r.json();
+      if (resposta.ok) {
+        setCupom({ codigo: resposta.codigo, percentual: resposta.percentual });
+        setTextoCupom("");
+      } else {
+        setErroCupom(
+          resposta.motivo === "erro" ? "Não conseguimos conferir o cupom agora. Tente de novo." : "Cupom inválido ou encerrado.",
+        );
+      }
+    } catch {
+      setErroCupom("Não conseguimos conferir o cupom agora. Confira sua internet.");
+    }
+    setConferindoCupom(false);
+  }
 
   // 1. Cria o pedido no banco (segura a vaga por 15 minutos), ou reaproveita o pendente
   //    de uma tentativa anterior. 2. Pede o link de pagamento e leva a cliente ao Mercado Pago.
@@ -74,11 +119,18 @@ export default function Resumo() {
       const p = await fetch(`/api/pedidos/${numero}/pagamento`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ opcao: escolhida.opcao }),
+        body: JSON.stringify({ opcao: escolhida.opcao, cupom: cupom?.codigo ?? null }),
       });
       const pagamento: RespostaPagamento = await p.json();
 
       if (!pagamento.ok) {
+        // O cupom foi desligado entre aplicar e pagar: tira o desconto e deixa a cliente decidir
+        if (pagamento.motivo === "cupom_invalido") {
+          setCupom(null);
+          setAviso({ texto: "Esse cupom não está mais valendo. Os valores foram atualizados sem o desconto." });
+          setEnviando(false);
+          return;
+        }
         if (pagamento.motivo === "ja_pago") {
           router.push(`/pedido/${numero}`);
           return;
@@ -173,10 +225,67 @@ export default function Resumo() {
           </ul>
           <div className="mt-4 flex justify-between border-t border-neutral-200 pt-3 text-sm">
             <span>Valor total</span>
-            <span className="font-semibold">{moeda(totalCentavos)}</span>
+            <span className={cupom ? "text-neutral-500 line-through" : "font-semibold"}>{moeda(totalCentavos)}</span>
           </div>
+          {cupom && (
+            <>
+              <div className="mt-1 flex justify-between text-sm text-neutral-600">
+                <span>
+                  Cupom {cupom.codigo} (−{cupom.percentual}%)
+                </span>
+                <span>−{moeda(descontoCentavos)}</span>
+              </div>
+              <div className="mt-1 flex justify-between text-sm">
+                <span className="font-semibold">Valor com desconto</span>
+                <span className="font-semibold">{moeda(finalCentavos)}</span>
+              </div>
+            </>
+          )}
         </section>
       </div>
+
+      <section className="mt-6">
+        <h2 className="mb-2 font-semibold">Cupom de desconto</h2>
+        {cupom ? (
+          <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-neutral-900 px-4 py-3 text-sm">
+            <span>
+              <span className="font-semibold">{cupom.codigo}</span> aplicado: {cupom.percentual}% de desconto no valor final
+            </span>
+            <button
+              type="button"
+              onClick={() => setCupom(null)}
+              className={`${classeToque} shrink-0 font-medium underline underline-offset-4`}
+            >
+              Remover
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={aplicarCupom} className="flex gap-2">
+            <input
+              value={textoCupom}
+              onChange={(e) => {
+                setTextoCupom(e.target.value.toUpperCase());
+                setErroCupom(null);
+              }}
+              placeholder="Digite seu cupom"
+              aria-label="Cupom de desconto"
+              aria-invalid={!!erroCupom}
+              autoCapitalize="characters"
+              autoComplete="off"
+              maxLength={20}
+              className="h-12 min-w-0 flex-1 rounded-xl border border-neutral-300 px-4 text-base uppercase outline-none placeholder:normal-case focus:border-neutral-900"
+            />
+            <button
+              type="submit"
+              disabled={!textoCupom.trim() || conferindoCupom}
+              className={`${classeToque} h-12 shrink-0 rounded-xl bg-neutral-900 px-5 text-sm font-medium text-white disabled:bg-neutral-300`}
+            >
+              {conferindoCupom ? "Conferindo..." : "Aplicar"}
+            </button>
+          </form>
+        )}
+        {erroCupom && <p className="mt-2 px-1 text-sm text-red-700">{erroCupom}</p>}
+      </section>
 
       <section className="mt-6">
         <h2 className="mb-3 font-semibold">Quanto você quer pagar agora?</h2>
