@@ -125,7 +125,13 @@ export const nomesOpcoes: Record<OpcaoPagamento, string> = {
 
 // Cupom (Luiz, 10/11/2026): o sinal continua sobre o preço cheio; o desconto sai do valor final.
 // Ex.: R$ 400 com 15% → sinal R$ 120, valor final R$ 340, restante R$ 220.
-export const normalizarCupom = (texto: string) => texto.trim().toUpperCase().replace(/s+/g, "");
+export const normalizarCupom = (texto: string) => texto.trim().toUpperCase().replace(/\s+/g, "");
+// "Parabéns, {nome}!" vira "Parabéns, Henrique!": só o primeiro nome, com a inicial maiúscula
+export const primeiroNome = (nome: string) => {
+  const primeiro = nome.trim().split(/\s+/)[0] ?? "";
+  return primeiro.charAt(0).toLocaleUpperCase("pt-BR") + primeiro.slice(1).toLocaleLowerCase("pt-BR");
+};
+export const mensagemDoCupom = (mensagem: string, nome: string) => mensagem.replaceAll("{nome}", primeiroNome(nome));
 export const descontoDoCupom = (totalCentavos: number, percentual: number) =>
   Math.round((totalCentavos * percentual) / 100);
 

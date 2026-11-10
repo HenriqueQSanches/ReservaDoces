@@ -187,12 +187,12 @@ export default function Painel() {
       .reduce((s, i) => s + i.quantidade, 0);
 
   // Devolve a mensagem de erro, ou null se deu certo
-  async function criarCupom(codigo: string, percentual: number) {
+  async function criarCupom(codigo: string, percentual: number, mensagem: string) {
     setOcupado("novo-cupom");
     const r = await fetch("/api/admin/cupons", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ codigo, percentual }),
+      body: JSON.stringify({ codigo, percentual, mensagem }),
     });
     await carregar();
     setOcupado(null);
@@ -200,7 +200,7 @@ export default function Painel() {
     return r.status === 409 ? "Já existe um cupom com esse código." : "Não foi possível criar o cupom. Tente de novo.";
   }
 
-  async function mudarCupom(codigo: string, dados: { ativo?: boolean; percentual?: number }) {
+  async function mudarCupom(codigo: string, dados: { ativo?: boolean; percentual?: number; mensagem?: string | null }) {
     if (dados.ativo === false && !window.confirm(`Desligar o cupom ${codigo}? Quem ainda não pagou não consegue mais usar.`)) return;
     setOcupado(codigo);
     const r = await fetch(`/api/admin/cupons/${codigo}`, {

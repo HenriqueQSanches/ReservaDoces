@@ -8,6 +8,7 @@ import {
   campanha,
   descontoDoCupom,
   grupos,
+  mensagemDoCupom,
   nomesOpcoes,
   normalizarCupom,
   opcoesDePagamento,
@@ -17,6 +18,7 @@ import {
 import { Tela, classeBotaoAcao, classeToque } from "@/components/Tela";
 import { useReserva } from "@/lib/reserva";
 import { dataCurta, moeda } from "@/lib/formatar";
+import { formatarWhatsapp } from "@/lib/textoWhatsapp";
 import type { RespostaCriarPedido } from "@/app/api/pedidos/route";
 import type { RespostaPagamento } from "@/app/api/pedidos/[numero]/pagamento/route";
 import type { RespostaCupom } from "@/app/api/cupons/route";
@@ -29,7 +31,7 @@ export default function Resumo() {
   const [aviso, setAviso] = useState<{ texto: string; link?: string; rotulo?: string } | null>(null);
   // Cupom de desconto: conferido no servidor ao aplicar e de novo na hora de gerar o pagamento
   const [textoCupom, setTextoCupom] = useState("");
-  const [cupom, setCupom] = useState<{ codigo: string; percentual: number } | null>(null);
+  const [cupom, setCupom] = useState<{ codigo: string; percentual: number; mensagem: string | null } | null>(null);
   const [conferindoCupom, setConferindoCupom] = useState(false);
   const [erroCupom, setErroCupom] = useState<string | null>(null);
 
@@ -65,7 +67,7 @@ export default function Resumo() {
       });
       const resposta: RespostaCupom = await r.json();
       if (resposta.ok) {
-        setCupom({ codigo: resposta.codigo, percentual: resposta.percentual });
+        setCupom({ codigo: resposta.codigo, percentual: resposta.percentual, mensagem: resposta.mensagem });
         setTextoCupom("");
       } else {
         setErroCupom(
@@ -247,9 +249,18 @@ export default function Resumo() {
       <section className="mt-6">
         <h2 className="mb-2 font-semibold">Cupom de desconto</h2>
         {cupom ? (
-          <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-neutral-900 px-4 py-3 text-sm">
+          <div className="flex animate-entrar items-center justify-between gap-3 rounded-2xl border-2 border-neutral-900 px-4 py-3 text-sm">
             <span>
-              <span className="font-semibold">{cupom.codigo}</span> aplicado: {cupom.percentual}% de desconto no valor final
+              {/* Mensagem do cupom, escrita no painel, com o primeiro nome da cliente e *negrito*, _itálico_, ~riscado~ */}
+              {cupom.mensagem && (
+                <span className="mb-1 block text-base font-medium text-neutral-900">
+                  {formatarWhatsapp(mensagemDoCupom(cupom.mensagem, dados.nome))}
+                </span>
+              )}
+              <span className={cupom.mensagem ? "text-neutral-600" : undefined}>
+                <span className="font-semibold">{cupom.codigo}</span> aplicado: {cupom.percentual}% de desconto no valor
+                final
+              </span>
             </span>
             <button
               type="button"

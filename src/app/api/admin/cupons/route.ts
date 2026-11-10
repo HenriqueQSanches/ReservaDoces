@@ -2,8 +2,16 @@ import { z } from "zod";
 import { normalizarCupom } from "@/config/campanha";
 import { exigirAdmin } from "@/lib/admin";
 import { bancoDeDados } from "@/lib/supabase";
+import { esquemaMensagem } from "@/lib/cupons";
 
-export type CupomAdmin = { codigo: string; percentual: number; ativo: boolean; criado_em: string };
+export type CupomAdmin = {
+  codigo: string;
+  percentual: number;
+  ativo: boolean;
+  mensagem: string | null;
+  criado_em: string;
+};
+
 
 export async function GET() {
   const acesso = await exigirAdmin();
@@ -17,6 +25,7 @@ export async function GET() {
 const esquema = z.object({
   codigo: z.string().transform(normalizarCupom).pipe(z.string().regex(/^[A-Z0-9]{3,20}$/)),
   percentual: z.number().int().min(1).max(90),
+  mensagem: esquemaMensagem,
 });
 
 export async function POST(request: Request) {

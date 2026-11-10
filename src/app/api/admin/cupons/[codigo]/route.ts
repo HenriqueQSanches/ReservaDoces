@@ -1,11 +1,17 @@
 import { z } from "zod";
 import { exigirAdmin } from "@/lib/admin";
 import { bancoDeDados } from "@/lib/supabase";
+import { esquemaMensagem } from "@/lib/cupons";
 
-// Liga ou desliga um cupom (ex.: se vazar) e muda a porcentagem. Pedidos já pagos guardam o desconto da época.
+// Liga ou desliga um cupom (ex.: se vazar), muda a porcentagem ou a mensagem.
+// Pedidos já pagos guardam o desconto da época.
 const esquema = z
-  .object({ ativo: z.boolean().optional(), percentual: z.number().int().min(1).max(90).optional() })
-  .refine((d) => d.ativo !== undefined || d.percentual !== undefined);
+  .object({
+    ativo: z.boolean().optional(),
+    percentual: z.number().int().min(1).max(90).optional(),
+    mensagem: esquemaMensagem,
+  })
+  .refine((d) => d.ativo !== undefined || d.percentual !== undefined || d.mensagem !== undefined);
 
 export async function POST(request: Request, ctx: RouteContext<"/api/admin/cupons/[codigo]">) {
   const acesso = await exigirAdmin();
