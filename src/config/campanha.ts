@@ -1,5 +1,5 @@
 // Dados da campanha. Endereço, datas, horários, sinal, WhatsApp, limites e os panetones vieram do Luiz (06 e 07/11/2026).
-// Ainda provisórias: as fotos. Outros sabores de Torta Cookie podem chegar.
+// Fotos do Luiz (09/11/2026): inteiro, corte e no prato; tortas inteira e fatia. Outros sabores de Torta Cookie podem chegar.
 
 // Os limites contam por grupo, somando todos os sabores (18 panetones, independente do sabor)
 export type Grupo = "panetone" | "torta";
@@ -48,7 +48,7 @@ export const campanha = {
 };
 
 // Cada sabor vira um item aqui, com o grupo certo.
-// Nome, descrição, peso e preço do Luiz (07/11/2026); fotos ainda provisórias. Podem chegar mais sabores de torta.
+// Nome, descrição, peso e preço do Luiz (07/11/2026); fotos de 09/11/2026. Podem chegar mais sabores de torta.
 export const produtos: Produto[] = [
   {
     id: "panetone-cacau-castanhas",
@@ -59,7 +59,7 @@ export const produtos: Produto[] = [
     destaques: ["fermentação natural", "Brigadeiro de Cacau 70%", "Castanhas de Caju caramelizadas", "Flor de Sal"],
     peso: "Aprox. 985g",
     precoCentavos: 15000,
-    imagens: ["/produtos/exemplo-1.svg", "/produtos/exemplo-2.svg", "/produtos/exemplo-3.svg"],
+    imagens: ["/produtos/cacau-castanhas-inteiro.webp", "/produtos/cacau-castanhas-corte.webp", "/produtos/cacau-castanhas-prato.webp"],
   },
   {
     id: "panetone-frutas-vermelhas",
@@ -69,7 +69,7 @@ export const produtos: Produto[] = [
     destaques: ["fermentação natural", "Brigadeiro de Chocolate Branco", "Geleia de Frutas Vermelhas"],
     peso: "Aprox. 985g",
     precoCentavos: 15000,
-    imagens: ["/produtos/exemplo-2.svg", "/produtos/exemplo-3.svg", "/produtos/exemplo-1.svg"],
+    imagens: ["/produtos/frutas-vermelhas-inteiro.webp", "/produtos/frutas-vermelhas-corte.webp", "/produtos/frutas-vermelhas-prato.webp"],
   },
   {
     id: "panetone-pistache",
@@ -79,7 +79,7 @@ export const produtos: Produto[] = [
     destaques: ["fermentação natural", "Brigadeiro de Pistache 100% puro"],
     peso: "Aprox. 985g",
     precoCentavos: 15000,
-    imagens: ["/produtos/exemplo-3.svg", "/produtos/exemplo-1.svg", "/produtos/exemplo-2.svg"],
+    imagens: ["/produtos/pistache-inteiro.webp", "/produtos/pistache-corte.webp", "/produtos/pistache-prato.webp"],
   },
   {
     id: "torta-cookie-tradicional",
@@ -90,7 +90,7 @@ export const produtos: Produto[] = [
     destaques: ["Brigadeiro Tradicional", "Chocolate meio-amargo"],
     peso: "Aprox. 1,1kg",
     precoCentavos: 12500,
-    imagens: ["/produtos/exemplo-1.svg", "/produtos/exemplo-2.svg", "/produtos/exemplo-3.svg"],
+    imagens: ["/produtos/torta-tradicional-inteira.jpg", "/produtos/torta-tradicional-fatia.webp"],
   },
   {
     id: "torta-cookie-red-velvet",
@@ -101,7 +101,7 @@ export const produtos: Produto[] = [
     destaques: ["massa red-velvet", "Brigadeiro de Ninho", "Geleia de Morango artesanal", "Chocolate branco"],
     peso: "Aprox. 1,1kg",
     precoCentavos: 12500,
-    imagens: ["/produtos/exemplo-2.svg", "/produtos/exemplo-3.svg", "/produtos/exemplo-1.svg"],
+    imagens: ["/produtos/torta-red-velvet-inteira.webp", "/produtos/torta-red-velvet-fatia.webp"],
   },
 ];
 
